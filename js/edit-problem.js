@@ -6,6 +6,7 @@ import {
   setDoc,
   serverTimestamp
 } from "../js/firebase.js";
+import { getCurrentUser } from "./auth.js";
 
 let solutionCounter = 0;
 
@@ -290,6 +291,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
     
+    // Get current user info
+    const currentUser = await getCurrentUser();
+    const authorName = currentUser?.name || currentUser?.email || "Unknown";
+    
     const payload = {
       id: parseInt(pid),
       title: titleInput.value.trim() || null,
@@ -300,7 +305,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       solutions: solutions,
       lessons: lessonRefsInput.value.split(",").map(x => x.trim()).filter(Boolean).map(x => parseInt(x)),
       draft: !publish,
-      author: "admin",
+      author: authorName,
       timestamp: serverTimestamp()
     };
     
@@ -326,17 +331,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const previewMode = document.getElementById("preview-mode");
     
     // Toggle visibility
-    editorForm.style.display = "none";
-    previewMode.style.display = "block";
-    previewBtn.textContent = "✏️ Edit";
-    
-    // Check if already in preview mode
-    if (previewMode.style.display === "block" && previewBtn.textContent === "✏️ Edit") {
+    if (previewMode.style.display === "block") {
       editorForm.style.display = "block";
       previewMode.style.display = "none";
       previewBtn.textContent = "👁️ Preview";
       return;
     }
+    
+    // Switch to preview
+    editorForm.style.display = "none";
+    previewMode.style.display = "block";
+    previewBtn.textContent = "✏️ Edit";
     
     // Render preview
     const title = titleInput.value || `Problem #${problemIdInput.value}`;
