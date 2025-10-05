@@ -24,6 +24,7 @@ export async function register(email, password, name = "") {
       name: name.trim() || "",
       role: "pending",
       approved: false,
+      photoURL: "", // Add photoURL field
       createdAt: Date.now()
     });
     
