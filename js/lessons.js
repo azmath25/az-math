@@ -8,6 +8,8 @@ import {
   getDocs
 } from "./firebase.js";
 
+import { populateCategorySelect } from "./categories-utils.js";
+
 let allLessons = [];
 let filteredLessons = [];
 
@@ -153,7 +155,10 @@ function escapeHtml(text) {
 }
 
 // Event listeners
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  // Load categories into filter dropdown
+  await populateCategorySelect(categoryFilter, '', true, 'All Categories');
+  
   loadLessons();
   
   searchInput.addEventListener("input", applyFilters);
