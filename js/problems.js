@@ -8,6 +8,8 @@ import {
   getDocs
 } from "./firebase.js";
 
+import { populateCategorySelect } from "./categories-utils.js";
+
 let allProblems = [];
 let filteredProblems = [];
 const ITEMS_PER_PAGE = 10;
@@ -188,7 +190,10 @@ function escapeHtml(text) {
 }
 
 // Event listeners
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  // Load categories into filter dropdown
+  await populateCategorySelect(categoryFilter, '', true, 'All Categories');
+  
   loadProblems();
   
   searchInput.addEventListener("input", applyFilters);
