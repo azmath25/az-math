@@ -251,4 +251,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     previewBtn.textContent = "✏️ Edit";
     
     // Render preview
-    const title = titleInput
+    const title = titleInput.value || `Lesson #${lessonIdInput.value}`;
+    document.getElementById("preview-title").textContent = title;
+    document.getElementById("preview-id").textContent = `#${lessonIdInput.value}`;
+    document.getElementById("preview-category").textContent = categoryInput.value || "General";
+    
+    // Tags
+    const previewTags = document.getElementById("preview-tags");
+    previewTags.innerHTML = "";
+    tagsInput.value.split(",").map(t => t.trim()).filter(Boolean).forEach(tag => {
+      previewTags.insertAdjacentHTML("beforeend", `<span class="tag">${escapeHtml(tag)}</span>`);
+    });
+    
+    // Cover image
+    const coverUrl = coverInput.value.trim();
+    if (coverUrl) {
+      document.getElementById("preview-cover-container").style.display = "block";
+      document.getElementById("preview-cover").src = coverUrl;
+      document.getElementById("preview-cover").alt = title;
+    } else {
+      document.getElementById("preview-cover-container").style.display = "none";
+    }
+    
+    // Content
+    const previewContent = document.getElementById("preview-content");
+    previewContent.innerHTML = "";
+    gatherBlocks(blocksContainer).forEach(block => {
+      previewContent.insertAdjacentHTML("beforeend", renderBlockPreview(block));
+    });
+    
+    // Typeset MathJax
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([previewMode]).catch(err => {
+        console.error("MathJax error:", err);
+      });
+    }
+  });
+});
