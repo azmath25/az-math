@@ -6,7 +6,8 @@ import {
   setDoc,
   serverTimestamp
 } from "../js/firebase.js";
-import { getCurrentUser } from "./auth.js";
+
+import { populateCategorySelect } from "../js/categories-utils.js";
 
 let solutionCounter = 0;
 
@@ -217,6 +218,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   const publishBtn = document.getElementById("publish-btn");
   const previewBtn = document.getElementById("preview-btn");
   
+  // Load categories dynamically
+  let currentCategory = '';
+  if (problemId) {
+    try {
+      const problemDoc = await getDoc(doc(db, "problems", String(problemId)));
+      if (problemDoc.exists()) {
+        currentCategory = problemDoc.data().category || '';
+      }
+    } catch (err) {
+      console.error("Error loading problem for category:", err);
+    }
+  }
+  
+  await populateCategorySelect(categoryInput, currentCategory);
+  
   // Add block handlers for statement
   addTextBtn.addEventListener("click", () => {
     statementBlocks.appendChild(createBlockElement({ type: "text", content: "" }));
@@ -291,10 +307,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
     
-    // Get current user info
-    const currentUser = await getCurrentUser();
-    const authorName = currentUser?.name || currentUser?.email || "Unknown";
-    
     const payload = {
       id: parseInt(pid),
       title: titleInput.value.trim() || null,
@@ -305,7 +317,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       solutions: solutions,
       lessons: lessonRefsInput.value.split(",").map(x => x.trim()).filter(Boolean).map(x => parseInt(x)),
       draft: !publish,
-      author: authorName,
+      author: "admin",
       timestamp: serverTimestamp()
     };
     
@@ -338,7 +350,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     
-    // Switch to preview
     editorForm.style.display = "none";
     previewMode.style.display = "block";
     previewBtn.textContent = "✏️ Edit";
