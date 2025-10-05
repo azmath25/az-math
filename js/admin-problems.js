@@ -12,6 +12,8 @@ import {
   serverTimestamp
 } from "../js/firebase.js";
 
+import { populateCategorySelect } from "../js/categories-utils.js";
+
 let allProblems = [];
 let filteredProblems = [];
 
@@ -178,29 +180,19 @@ function applyFilters() {
   renderProblems();
 }
 
-// Create new problem - FIXED
+// Create new problem
 async function createNewProblem() {
   try {
-    addProblemBtn.disabled = true;
-    addProblemBtn.textContent = "Creating...";
-    
+    // Get latest ID from meta/problems
     const metaDocRef = doc(db, "meta", "problems");
     const metaDoc = await getDoc(metaDocRef);
     
     let nextId = 1;
     if (metaDoc.exists() && metaDoc.data().latestId) {
       nextId = metaDoc.data().latestId + 1;
-    } else {
-      // Fallback: scan existing problems for max ID
-      const problemsSnap = await getDocs(collection(db, "problems"));
-      let maxId = 0;
-      problemsSnap.forEach(doc => {
-        const id = doc.data().id;
-        if (id > maxId) maxId = id;
-      });
-      nextId = maxId + 1;
     }
     
+    // Create draft problem
     await setDoc(doc(db, "problems", String(nextId)), {
       id: nextId,
       title: "",
@@ -215,13 +207,14 @@ async function createNewProblem() {
       timestamp: serverTimestamp()
     });
     
+    // Update meta
     await setDoc(metaDocRef, { latestId: nextId }, { merge: true });
+    
+    // Redirect to edit page
     window.location.href = `edit-problem.html?id=${nextId}`;
   } catch (err) {
     console.error("Error creating problem:", err);
     alert("Failed to create problem: " + err.message);
-    addProblemBtn.disabled = false;
-    addProblemBtn.textContent = "➕ Add New Problem";
   }
 }
 
@@ -233,7 +226,10 @@ function escapeHtml(text) {
 }
 
 // Event listeners
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  // Load categories into filter dropdown
+  await populateCategorySelect(categoryFilter, '', true, 'All Categories');
+  
   loadProblems();
   
   searchInput.addEventListener("input", applyFilters);
