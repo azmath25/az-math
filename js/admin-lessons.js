@@ -12,6 +12,8 @@ import {
   serverTimestamp
 } from "../js/firebase.js";
 
+import { populateCategorySelect } from "../js/categories-utils.js";
+
 let allLessons = [];
 let filteredLessons = [];
 
@@ -176,13 +178,9 @@ function applyFilters() {
   renderLessons();
 }
 
-// Create new lesson - FIXED VERSION
+// Create new lesson
 async function createNewLesson() {
   try {
-    // Show loading state
-    addLessonBtn.disabled = true;
-    addLessonBtn.textContent = "Creating...";
-    
     // Get latest ID from meta/lessons
     const metaDocRef = doc(db, "meta", "lessons");
     const metaDoc = await getDoc(metaDocRef);
@@ -190,18 +188,7 @@ async function createNewLesson() {
     let nextId = 1;
     if (metaDoc.exists() && metaDoc.data().latestId) {
       nextId = metaDoc.data().latestId + 1;
-    } else {
-      // If meta doc doesn't exist, check existing lessons to find max ID
-      const lessonsSnap = await getDocs(collection(db, "lessons"));
-      let maxId = 0;
-      lessonsSnap.forEach(doc => {
-        const id = doc.data().id;
-        if (id > maxId) maxId = id;
-      });
-      nextId = maxId + 1;
     }
-    
-    console.log("Creating lesson with ID:", nextId);
     
     // Create draft lesson
     await setDoc(doc(db, "lessons", String(nextId)), {
@@ -220,17 +207,11 @@ async function createNewLesson() {
     // Update meta
     await setDoc(metaDocRef, { latestId: nextId }, { merge: true });
     
-    console.log("Lesson created successfully, redirecting...");
-    
     // Redirect to edit page
     window.location.href = `edit-lesson.html?id=${nextId}`;
   } catch (err) {
     console.error("Error creating lesson:", err);
     alert("Failed to create lesson: " + err.message);
-    
-    // Reset button state
-    addLessonBtn.disabled = false;
-    addLessonBtn.textContent = "➕ Add New Lesson";
   }
 }
 
@@ -242,24 +223,15 @@ function escapeHtml(text) {
 }
 
 // Event listeners
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("Admin Lessons page loaded");
-  
-  // Check if elements exist
-  if (!lessonsList) console.error("lessons-list element not found");
-  if (!searchInput) console.error("search-input element not found");
-  if (!categoryFilter) console.error("category-filter element not found");
-  if (!draftFilter) console.error("draft-filter element not found");
-  if (!addLessonBtn) console.error("add-lesson-btn element not found");
+document.addEventListener("DOMContentLoaded", async () => {
+  // Load categories into filter dropdown
+  await populateCategorySelect(categoryFilter, '', true, 'All Categories');
   
   loadLessons();
   
-  if (searchInput) searchInput.addEventListener("input", applyFilters);
-  if (categoryFilter) categoryFilter.addEventListener("change", applyFilters);
-  if (draftFilter) draftFilter.addEventListener("change", applyFilters);
+  searchInput.addEventListener("input", applyFilters);
+  categoryFilter.addEventListener("change", applyFilters);
+  draftFilter.addEventListener("change", applyFilters);
   
-  if (addLessonBtn) {
-    addLessonBtn.addEventListener("click", createNewLesson);
-    console.log("Add lesson button event listener attached");
-  }
+  addLessonBtn.addEventListener("click", createNewLesson);
 });
