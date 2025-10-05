@@ -31,18 +31,17 @@ export function openPhotoUploadModal(options = {}) {
       
       <div class="photo-modal-body">
         <div class="photo-upload-area" id="photo-upload-area">
+          <div class="photo-upload-placeholder" id="photo-placeholder">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <p style="font-size: 1.125rem; font-weight: 500; margin: 1rem 0 0.5rem;">Click to upload or drag & drop</p>
+            <p class="photo-upload-hint">JPG, PNG or GIF (Max 5MB)</p>
+          </div>
           ${currentPhotoURL ? `
-            <img src="${currentPhotoURL}" alt="Current photo" id="photo-preview" />
-          ` : `
-            <div class="photo-upload-placeholder">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-              <p>Click to upload or drag & drop</p>
-              <p class="photo-upload-hint">JPG, PNG or GIF (Max 5MB)</p>
-            </div>
-          `}
+            <img src="${currentPhotoURL}" alt="Current photo" id="photo-preview" style="max-width: 200px; max-height: 200px; border-radius: 50%; object-fit: cover; margin-top: 1rem;" />
+          ` : ''}
           <input type="file" id="photo-file-input" accept="image/*" style="display: none;" />
         </div>
         
@@ -78,6 +77,8 @@ export function openPhotoUploadModal(options = {}) {
   const zoomInBtn = modal.querySelector("#zoom-in-btn");
   const zoomOutBtn = modal.querySelector("#zoom-out-btn");
   const resetBtn = modal.querySelector("#reset-crop-btn");
+  const placeholder = modal.querySelector("#photo-placeholder");
+  const previewImg = modal.querySelector("#photo-preview");
 
   let currentImage = null;
   let scale = 1;
@@ -95,7 +96,7 @@ export function openPhotoUploadModal(options = {}) {
 
   // Upload area click
   uploadArea.addEventListener("click", (e) => {
-    if (e.target.id !== "photo-preview") {
+    if (e.target.id !== "photo-preview" && !e.target.closest('img')) {
       fileInput.click();
     }
   });
@@ -393,8 +394,9 @@ function addPhotoModalStyles() {
       text-align: center;
       cursor: pointer;
       transition: all 0.3s;
-      min-height: 200px;
+      min-height: 250px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
     }
@@ -406,6 +408,10 @@ function addPhotoModalStyles() {
 
     .photo-upload-placeholder {
       color: #64748b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
     .photo-upload-placeholder svg {
@@ -420,13 +426,6 @@ function addPhotoModalStyles() {
     .photo-upload-hint {
       font-size: 0.875rem;
       color: #94a3b8;
-    }
-
-    .photo-upload-area img {
-      max-width: 100%;
-      max-height: 200px;
-      border-radius: 50%;
-      object-fit: cover;
     }
 
     .photo-crop-container {
