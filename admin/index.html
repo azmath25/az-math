@@ -9,7 +9,7 @@
   <script type="module" src="../js/menu.js" defer></script>
   <script type="module">
     import { protectAdminPage } from "../js/auth.js";
-    import { db, collection, getDocs, query, where } from "../js/firebase.js";
+    import { db, collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp } from "../js/firebase.js";
     
     // Protect this page
     protectAdminPage().catch(() => {
@@ -45,8 +45,109 @@
       }
     }
     
+    // Create new problem
+    async function createNewProblem() {
+      try {
+        const btn = document.getElementById("add-new-problem-btn");
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Creating...";
+        }
+        
+        const metaDocRef = doc(db, "meta", "problems");
+        const metaDoc = await getDoc(metaDocRef);
+        
+        let nextId = 1;
+        if (metaDoc.exists() && metaDoc.data().latestId) {
+          nextId = metaDoc.data().latestId + 1;
+        }
+        
+        await setDoc(doc(db, "problems", String(nextId)), {
+          id: nextId,
+          title: "",
+          category: "",
+          difficulty: "Medium",
+          tags: [],
+          statement: [],
+          solutions: [],
+          lessons: [],
+          draft: true,
+          author: "admin",
+          timestamp: serverTimestamp()
+        });
+        
+        await setDoc(metaDocRef, { latestId: nextId }, { merge: true });
+        
+        window.location.href = `edit-problem.html?id=${nextId}`;
+      } catch (err) {
+        console.error("Error creating problem:", err);
+        alert("Failed to create problem: " + err.message);
+        const btn = document.getElementById("add-new-problem-btn");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Add New Problem";
+        }
+      }
+    }
+    
+    // Create new lesson
+    async function createNewLesson() {
+      try {
+        const btn = document.getElementById("add-new-lesson-btn");
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Creating...";
+        }
+        
+        const metaDocRef = doc(db, "meta", "lessons");
+        const metaDoc = await getDoc(metaDocRef);
+        
+        let nextId = 1;
+        if (metaDoc.exists() && metaDoc.data().latestId) {
+          nextId = metaDoc.data().latestId + 1;
+        }
+        
+        await setDoc(doc(db, "lessons", String(nextId)), {
+          id: nextId,
+          title: "",
+          category: "",
+          tags: [],
+          cover: "",
+          blocks: [],
+          problems: [],
+          draft: true,
+          author: "admin",
+          timestamp: serverTimestamp()
+        });
+        
+        await setDoc(metaDocRef, { latestId: nextId }, { merge: true });
+        
+        window.location.href = `edit-lesson.html?id=${nextId}`;
+      } catch (err) {
+        console.error("Error creating lesson:", err);
+        alert("Failed to create lesson: " + err.message);
+        const btn = document.getElementById("add-new-lesson-btn");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Add New Lesson";
+        }
+      }
+    }
+    
     document.addEventListener("DOMContentLoaded", () => {
       loadStats();
+      
+      // Attach button handlers
+      const addProblemBtn = document.getElementById("add-new-problem-btn");
+      const addLessonBtn = document.getElementById("add-new-lesson-btn");
+      
+      if (addProblemBtn) {
+        addProblemBtn.addEventListener("click", createNewProblem);
+      }
+      
+      if (addLessonBtn) {
+        addLessonBtn.addEventListener("click", createNewLesson);
+      }
     });
   </script>
 </head>
@@ -84,7 +185,7 @@
         <p>Create, edit, and manage math problems</p>
         <div class="dashboard-actions">
           <a href="problems.html" class="btn">View All Problems</a>
-          <a href="edit-problem.html" class="btn btn-secondary">Add New Problem</a>
+          <button id="add-new-problem-btn" class="btn btn-secondary">Add New Problem</button>
         </div>
       </div>
 
@@ -95,7 +196,7 @@
         <p>Create, edit, and manage lessons</p>
         <div class="dashboard-actions">
           <a href="lessons.html" class="btn">View All Lessons</a>
-          <a href="edit-lesson.html" class="btn btn-secondary">Add New Lesson</a>
+          <button id="add-new-lesson-btn" class="btn btn-secondary">Add New Lesson</button>
         </div>
       </div>
 
