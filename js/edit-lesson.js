@@ -1,5 +1,6 @@
 // js/edit-lesson.js
 import { db, doc, getDoc, setDoc, serverTimestamp } from "../js/firebase.js";
+import { getCurrentUser } from "./auth.js";
 
 // Create block element for editing
 function createBlockElement(block = { type: "text", content: "" }) {
@@ -187,6 +188,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     
+    // Get current user info
+    const currentUser = await getCurrentUser();
+    const authorName = currentUser?.name || currentUser?.email || "Unknown";
+    
     const payload = {
       id: parseInt(lid),
       title: titleInput.value.trim(),
@@ -196,7 +201,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       blocks: gatherBlocks(blocksContainer),
       problems: problemRefsInput.value.split(",").map(x => x.trim()).filter(Boolean).map(x => parseInt(x)),
       draft: !publish,
-      author: "admin",
+      author: authorName,
       timestamp: serverTimestamp()
     };
     
