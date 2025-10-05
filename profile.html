@@ -34,7 +34,6 @@
 
       onAuthState((user) => {
         if (!user) {
-          // Not logged in - show guest section
           profileCard.style.display = "none";
           adminSection.style.display = "none";
           guestSection.style.display = "block";
@@ -43,18 +42,15 @@
 
         currentUser = user;
 
-        // Logged in - show profile
         profileCard.style.display = "flex";
         guestSection.style.display = "none";
 
         userEmail.textContent = user.email || "Unknown";
         userName.textContent = user.name || "No name set";
         
-        // Display role with badge styling
         const roleText = user.role || "pending";
         userRole.textContent = roleText.charAt(0).toUpperCase() + roleText.slice(1);
         
-        // Add role badge styling
         if (user.role === "admin") {
           userRole.className = "role-badge role-admin";
           adminSection.style.display = "block";
@@ -65,13 +61,11 @@
           pendingMessage.style.display = "block";
         }
 
-        // Load user photo if available
         if (user.photoURL) {
           userPhoto.src = user.photoURL;
         }
       });
 
-      // Edit name button
       editNameBtn.addEventListener("click", () => {
         nameInput.value = currentUser?.name || "";
         nameDisplay.style.display = "none";
@@ -79,13 +73,11 @@
         nameInput.focus();
       });
 
-      // Cancel edit
       cancelNameBtn.addEventListener("click", () => {
         nameDisplay.style.display = "block";
         nameEdit.style.display = "none";
       });
 
-      // Save name
       saveNameBtn.addEventListener("click", async () => {
         const newName = nameInput.value.trim();
         
@@ -100,7 +92,6 @@
           
           await updateUserName(newName);
           
-          // Update display
           userName.textContent = newName;
           nameDisplay.style.display = "block";
           nameEdit.style.display = "none";
@@ -115,14 +106,12 @@
         }
       });
 
-      // Allow Enter key to save
       nameInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
           saveNameBtn.click();
         }
       });
 
-      // Change photo button
       changePhotoBtn.addEventListener("click", () => {
         if (!currentUser) {
           alert("Please login first");
@@ -134,22 +123,17 @@
           aspectRatio: 1,
           onSave: async (blob) => {
             try {
-              // Show loading state
               changePhotoBtn.disabled = true;
               changePhotoBtn.textContent = "Uploading...";
               
-              // Upload to Firebase Storage
               const photoURL = await uploadPhotoToStorage(blob, currentUser.uid);
               
-              // Update user document in Firestore
               await updateDoc(doc(db, "Users", currentUser.uid), {
                 photoURL: photoURL
               });
               
-              // Update display
               userPhoto.src = photoURL;
               
-              // Update profile photo in header
               const headerPhoto = document.getElementById("profile-photo");
               if (headerPhoto) {
                 headerPhoto.src = photoURL;
@@ -170,7 +154,6 @@
         });
       });
 
-      // Make photo clickable to change
       photoContainer.addEventListener("click", () => {
         if (currentUser) {
           changePhotoBtn.click();
@@ -178,6 +161,7 @@
       });
     });
   </script>
+
   <style>
     .profile-card {
       display: grid;
@@ -310,20 +294,20 @@
   <main class="content">
     <h1>My Profile</h1>
 
-    <!-- Profile Card -->
-      <div>
-        <div class="card profile-card"
-          <div class="profile-photo-container" id="photo-container">
-            <img src="assets/img/defaultprofile.png" id="user-photo" class="profile-photo-large" alt="Profile Photo">
-            <div class="photo-change-overlay">
-              <span>📷 Change Photo</span>
-            </div>
+    <div class="card profile-card">
+      <!-- Left column: photo + button -->
+      <div class="profile-photo-section">
+        <div class="profile-photo-container" id="photo-container">
+          <img src="assets/img/defaultprofile.png" id="user-photo" class="profile-photo-large" alt="Profile Photo">
+          <div class="photo-change-overlay">
+            <span>📷 Change Photo</span>
           </div>
-    
-          <button id="change-photo-btn" class="btn" style="margin-bottom: 2rem;">📷 Change Photo</button>
-        <div>
-      <div>
-      <div class="profile-info">
+        </div>
+        <button id="change-photo-btn" class="btn">📷 Change Photo</button>
+      </div>
+
+      <!-- Right column: user info -->
+      <div class="profile-details-section">
         <div style="margin-bottom: 1.5rem;">
           <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
             <strong style="color: #64748b; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Name</strong>
@@ -363,7 +347,6 @@
       </div>
     </div>
 
-    <!-- Admin Section -->
     <div id="admin-section" style="display:none; margin-top:2rem;">
       <div class="card">
         <h2>⚙️ Admin Controls</h2>
@@ -374,7 +357,6 @@
       </div>
     </div>
 
-    <!-- Guest Message -->
     <div id="guest-section" style="display:none;">
       <div class="card">
         <h2>Welcome to Az-Math!</h2>
