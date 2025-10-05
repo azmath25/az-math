@@ -32,8 +32,17 @@ document.addEventListener("DOMContentLoaded", () => {
         <a href="${basePath}admin/index.html">⚙️ Admin Panel</a>
         <a href="#" id="logout-link">🚪 Logout</a>
       `;
-    } else {
+    } else if (user.role === "user") {
       // Regular user menu
+      menuContainer.innerHTML = `
+        <a href="${basePath}index.html">🏠 Home</a>
+        <a href="${basePath}problems.html">📝 Problems</a>
+        <a href="${basePath}lessons.html">📚 Lessons</a>
+        <a href="${basePath}profile.html">👤 Profile</a>
+        <a href="#" id="logout-link">🚪 Logout</a>
+      `;
+    } else {
+      // Pending user menu
       menuContainer.innerHTML = `
         <a href="${basePath}index.html">🏠 Home</a>
         <a href="${basePath}problems.html">📝 Problems</a>
