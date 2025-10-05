@@ -26,26 +26,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const isAdminPage = window.location.pathname.includes("/admin/");
     const basePath = isAdminPage ? "../" : "";
 
-    // Set default photo
+    // Set default photo initially
     profilePhoto.src = `${basePath}assets/img/defaultprofile.png`;
-
-    // Make clickable to go to profile
     profilePhoto.style.cursor = "pointer";
-    profilePhoto.addEventListener("click", () => {
-      onAuthState((user) => {
+
+    // Listen to auth state ONCE and handle everything in one callback
+    onAuthState((user) => {
+      // Update photo
+      if (user && user.photoURL) {
+        profilePhoto.src = user.photoURL;
+      } else {
+        profilePhoto.src = `${basePath}assets/img/defaultprofile.png`;
+      }
+
+      // Set up click handler (overwrite any previous)
+      profilePhoto.onclick = () => {
         if (user) {
           window.location.href = `${basePath}profile.html`;
         } else {
           window.location.href = `${basePath}login.html`;
         }
-      });
-    });
-
-    // Load user's photo if they have one
-    onAuthState((user) => {
-      if (user && user.photoURL) {
-        profilePhoto.src = user.photoURL;
-      }
+      };
     });
   }
 });
