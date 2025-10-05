@@ -274,16 +274,18 @@
         </div>
       </div>
 
-      <button id="change-photo-btn" class="btn" style="margin-bottom: 1.5rem;">📷 Change Photo</button>
+      <button id="change-photo-btn" class="btn" style="margin-bottom: 2rem;">📷 Change Photo</button>
 
       <div class="profile-info">
-        <p><strong>Email:</strong> <span id="user-email">Loading...</span></p>
-        
-        <div style="margin: 0.75rem 0;">
-          <strong>Name:</strong>
-          <div id="name-display" style="display: inline-block;">
-            <span id="user-name">Loading...</span>
-            <button id="edit-name-btn" class="btn btn-small" style="margin-left: 0.5rem;">✏️ Edit</button>
+        <div style="margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <strong style="color: #64748b; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Name</strong>
+          </div>
+          <div id="name-display" style="display: block;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span id="user-name" style="font-size: 1.125rem; color: #1e293b; font-weight: 500;">Loading...</span>
+              <button id="edit-name-btn" class="btn btn-small">✏️ Edit</button>
+            </div>
           </div>
           <div id="name-edit" style="display: none; margin-top: 0.5rem; gap: 0.5rem;">
             <input 
@@ -296,10 +298,20 @@
             <button id="cancel-name-btn" class="btn btn-small btn-secondary">❌ Cancel</button>
           </div>
         </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <div style="color: #64748b; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Email</div>
+          <div id="user-email" style="font-size: 1.125rem; color: #1e293b; font-weight: 500;">Loading...</div>
+        </div>
         
-        <p><strong>Role:</strong> <span id="user-role">Loading...</span></p>
-        <p id="pending-message" style="display:none; color: #f59e0b; margin-top: 1rem;">
-          ⏳ Your account is pending admin approval.
+        <div style="margin-bottom: 1.5rem;">
+          <div style="color: #64748b; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Role</div>
+          <span id="user-role">Loading...</span>
+        </div>
+
+        <p id="pending-message" style="display:none; background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; border-radius: 8px; margin-top: 1.5rem;">
+          <strong style="color: #92400e;">⏳ Pending Approval</strong><br>
+          <span style="color: #78350f; font-size: 0.9rem;">Your account is waiting for admin approval.</span>
         </p>
       </div>
     </div>
