@@ -19,12 +19,13 @@
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         
+        const name = document.getElementById("register-name").value.trim();
         const email = document.getElementById("register-email").value.trim();
         const password = passwordInput.value;
         const confirmPassword = confirmPasswordInput.value;
         
         if (!email || !password || !confirmPassword) {
-          alert("Please fill in all fields.");
+          alert("Please fill in all required fields.");
           return;
         }
         
@@ -45,7 +46,7 @@
         submitBtn.textContent = "Registering...";
         
         try {
-          await register(email, password);
+          await register(email, password, name);
         } catch (err) {
           submitBtn.disabled = false;
           submitBtn.textContent = "Register";
@@ -83,7 +84,15 @@
     </p>
     
     <form id="register-form">
-      <label for="register-email">Email</label>
+      <label for="register-name">Name (Optional)</label>
+      <input 
+        type="text" 
+        id="register-name" 
+        placeholder="Your full name"
+        autocomplete="name"
+      />
+      
+      <label for="register-email">Email *</label>
       <input 
         type="email" 
         id="register-email" 
@@ -92,7 +101,7 @@
         autocomplete="email"
       />
       
-      <label for="register-password">Password</label>
+      <label for="register-password">Password *</label>
       <input 
         type="password" 
         id="register-password" 
@@ -102,7 +111,7 @@
         minlength="6"
       />
       
-      <label for="confirm-password">Confirm Password</label>
+      <label for="confirm-password">Confirm Password *</label>
       <input 
         type="password" 
         id="confirm-password" 
