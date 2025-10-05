@@ -7,7 +7,118 @@
   <link rel="stylesheet" href="css/style.css" />
   <script type="module" src="js/main.js" defer></script>
   <script type="module" src="js/menu.js" defer></script>
-  <script type="module" src="js/profile.js" defer></script>
+  <script type="module">
+    import { onAuthState, updateUserName } from "./js/auth.js";
+    
+    document.addEventListener("DOMContentLoaded", () => {
+      const userEmail = document.getElementById("user-email");
+      const userName = document.getElementById("user-name");
+      const userRole = document.getElementById("user-role");
+      const userPhoto = document.getElementById("user-photo");
+      const adminSection = document.getElementById("admin-section");
+      const guestSection = document.getElementById("guest-section");
+      const pendingMessage = document.getElementById("pending-message");
+      const profileCard = document.querySelector(".profile-card");
+      const editNameBtn = document.getElementById("edit-name-btn");
+      const saveNameBtn = document.getElementById("save-name-btn");
+      const cancelNameBtn = document.getElementById("cancel-name-btn");
+      const nameDisplay = document.getElementById("name-display");
+      const nameEdit = document.getElementById("name-edit");
+      const nameInput = document.getElementById("name-input");
+
+      let currentUser = null;
+
+      onAuthState((user) => {
+        if (!user) {
+          // Not logged in - show guest section
+          profileCard.style.display = "none";
+          adminSection.style.display = "none";
+          guestSection.style.display = "block";
+          return;
+        }
+
+        currentUser = user;
+
+        // Logged in - show profile
+        profileCard.style.display = "flex";
+        guestSection.style.display = "none";
+
+        userEmail.textContent = user.email || "Unknown";
+        userName.textContent = user.name || "No name set";
+        
+        // Display role with badge styling
+        const roleText = user.role || "pending";
+        userRole.textContent = roleText.charAt(0).toUpperCase() + roleText.slice(1);
+        
+        // Add role badge styling
+        if (user.role === "admin") {
+          userRole.className = "role-badge role-admin";
+          adminSection.style.display = "block";
+        } else if (user.role === "user") {
+          userRole.className = "role-badge role-user";
+        } else {
+          userRole.className = "role-badge role-pending";
+          pendingMessage.style.display = "block";
+        }
+
+        // Load user photo if available
+        if (user.photoURL) {
+          userPhoto.src = user.photoURL;
+        }
+      });
+
+      // Edit name button
+      editNameBtn.addEventListener("click", () => {
+        nameInput.value = currentUser?.name || "";
+        nameDisplay.style.display = "none";
+        nameEdit.style.display = "flex";
+        nameInput.focus();
+      });
+
+      // Cancel edit
+      cancelNameBtn.addEventListener("click", () => {
+        nameDisplay.style.display = "block";
+        nameEdit.style.display = "none";
+      });
+
+      // Save name
+      saveNameBtn.addEventListener("click", async () => {
+        const newName = nameInput.value.trim();
+        
+        if (!newName) {
+          alert("Please enter a name");
+          return;
+        }
+
+        try {
+          saveNameBtn.disabled = true;
+          saveNameBtn.textContent = "Saving...";
+          
+          await updateUserName(newName);
+          
+          // Update display
+          userName.textContent = newName;
+          nameDisplay.style.display = "block";
+          nameEdit.style.display = "none";
+          
+          alert("Name updated successfully!");
+        } catch (err) {
+          console.error("Error updating name:", err);
+          alert("Failed to update name: " + err.message);
+        } finally {
+          saveNameBtn.disabled = false;
+          saveNameBtn.textContent = "💾 Save";
+        }
+      });
+
+      // Allow Enter key to save
+      nameInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          saveNameBtn.click();
+        }
+      });
+    });
+  </script>
 </head>
 <body>
   <header class="navbar">
@@ -39,6 +150,25 @@
 
       <div class="profile-info">
         <p><strong>Email:</strong> <span id="user-email">Loading...</span></p>
+        
+        <div style="margin: 0.75rem 0;">
+          <strong>Name:</strong>
+          <div id="name-display" style="display: inline-block;">
+            <span id="user-name">Loading...</span>
+            <button id="edit-name-btn" class="btn btn-small" style="margin-left: 0.5rem;">✏️ Edit</button>
+          </div>
+          <div id="name-edit" style="display: none; margin-top: 0.5rem; gap: 0.5rem;">
+            <input 
+              type="text" 
+              id="name-input" 
+              placeholder="Enter your name"
+              style="padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; flex: 1; max-width: 250px;"
+            />
+            <button id="save-name-btn" class="btn btn-small">💾 Save</button>
+            <button id="cancel-name-btn" class="btn btn-small btn-secondary">❌ Cancel</button>
+          </div>
+        </div>
+        
         <p><strong>Role:</strong> <span id="user-role">Loading...</span></p>
         <p id="pending-message" style="display:none; color: #f59e0b; margin-top: 1rem;">
           ⏳ Your account is pending admin approval.
