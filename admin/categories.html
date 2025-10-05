@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="az">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kateqoriyaları İdarə Et - Az-Math</title>
+  <title>Manage Categories - Az-Math</title>
   <link rel="stylesheet" href="../css/style.css" />
   <script type="module" src="../js/main.js" defer></script>
   <script type="module" src="../js/menu.js" defer></script>
@@ -104,7 +104,7 @@
 
     async function loadCategories() {
       const list = document.getElementById('categories-list');
-      list.innerHTML = '<div class="loading">Yüklənir...</div>';
+      list.innerHTML = '<div class="loading">Loading...</div>';
       
       try {
         const snap = await getDocs(collection(db, 'categories'));
@@ -118,8 +118,8 @@
           list.innerHTML = `
             <div class="empty-state">
               <div style="font-size: 3rem; margin-bottom: 1rem;">📚</div>
-              <h3>Hələ kateqoriya yoxdur</h3>
-              <p>Yuxarıdaki formanı istifadə edərək ilk kateqoriyanızı əlavə edin</p>
+              <h3>No categories yet</h3>
+              <p>Use the form above to add your first category</p>
             </div>
           `;
           return;
@@ -132,18 +132,18 @@
               <div class="category-name-az">${escapeHtml(c.nameAz)}</div>
             </div>
             <div class="category-actions">
-              <button onclick="editCategory('${c.id}')" class="btn btn-small" title="Redaktə et">
-                ✏️ Redaktə
+              <button onclick="editCategory('${c.id}')" class="btn btn-small" title="Edit">
+                ✏️ Edit
               </button>
-              <button onclick="deleteCategory('${c.id}')" class="btn btn-small btn-delete" title="Sil">
-                🗑️ Sil
+              <button onclick="deleteCategory('${c.id}')" class="btn btn-small btn-delete" title="Delete">
+                🗑️ Delete
               </button>
             </div>
           </div>
         `).join('');
       } catch (err) {
         console.error('Error loading categories:', err);
-        list.innerHTML = '<div class="empty-state" style="color: #ef4444;">Xəta baş verdi. Yenidən yükləyin.</div>';
+        list.innerHTML = '<div class="empty-state" style="color: #ef4444;">An error occurred. Please reload.</div>';
       }
     }
 
@@ -151,15 +151,15 @@
       const category = categories.find(c => c.id === id);
       if (!category) return;
       
-      if (!confirm(`"${category.nameEn}" kateqoriyasını silmək istədiyinizdən əminsiniz?`)) return;
+      if (!confirm(`Are you sure you want to delete the "${category.nameEn}" category?`)) return;
       
       try {
         await deleteDoc(doc(db, 'categories', id));
-        alert('Kateqoriya uğurla silindi!');
+        alert('Category deleted successfully!');
         loadCategories();
       } catch (err) {
         console.error('Error deleting:', err);
-        alert('Silinmədi: ' + err.message);
+        alert('Failed to delete: ' + err.message);
       }
     };
 
@@ -167,10 +167,10 @@
       const category = categories.find(c => c.id === id);
       if (!category) return;
       
-      const newEn = prompt('İngilis adı:', category.nameEn);
+      const newEn = prompt('English name:', category.nameEn);
       if (!newEn) return;
       
-      const newAz = prompt('Azərbaycan adı:', category.nameAz);
+      const newAz = prompt('Azerbaijani name:', category.nameAz);
       if (!newAz) return;
       
       try {
@@ -178,11 +178,11 @@
           nameEn: newEn.trim(),
           nameAz: newAz.trim()
         });
-        alert('Kateqoriya yeniləndi!');
+        alert('Category updated successfully!');
         loadCategories();
       } catch (err) {
         console.error('Error updating:', err);
-        alert('Yenilənmədi: ' + err.message);
+        alert('Failed to update: ' + err.message);
       }
     };
 
@@ -205,12 +205,12 @@
         const az = document.getElementById('name-az').value.trim();
         
         if (!en || !az) {
-          alert('Xahiş edirik bütün sahələri doldurun');
+          alert('Please fill in all fields');
           return;
         }
         
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Əlavə edilir...';
+        submitBtn.textContent = 'Adding...';
         
         try {
           await addDoc(collection(db, 'categories'), { 
@@ -218,16 +218,16 @@
             nameAz: az,
             createdAt: new Date().toISOString()
           });
-          alert('Kateqoriya əlavə edildi!');
+          alert('Category added successfully!');
           addForm.reset();
           document.getElementById('name-en').focus();
           loadCategories();
         } catch (err) {
           console.error('Error adding:', err);
-          alert('Əlavə edilmədi: ' + err.message);
+          alert('Failed to add: ' + err.message);
         } finally {
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Əlavə Et';
+          submitBtn.textContent = 'Add Category';
         }
       });
     });
@@ -246,11 +246,11 @@
 
   <nav class="sidebar" id="sidebar">
     <ul>
-      <li><a href="../index.html">🏠 Ana Səhifə</a></li>
-      <li><a href="index.html">📊 İdarəetmə Paneli</a></li>
-      <li><a href="problems.html">📝 Məsələlər</a></li>
-      <li><a href="lessons.html">📚 Dərslər</a></li>
-      <li><a href="users.html">👥 İstifadəçilər</a></li>
+      <li><a href="../index.html">🏠 Home</a></li>
+      <li><a href="index.html">📊 Dashboard</a></li>
+      <li><a href="problems.html">📝 Problems</a></li>
+      <li><a href="lessons.html">📚 Lessons</a></li>
+      <li><a href="users.html">👥 Users</a></li>
     </ul>
   </nav>
 
@@ -259,47 +259,47 @@
   <main class="categories-container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
       <div>
-        <h1>📚 Kateqoriyaları İdarə Et</h1>
+        <h1>📚 Manage Categories</h1>
         <p style="color: #6b7280; margin-top: 0.5rem;">
-          Məsələ və dərs kateqoriyalarını əlavə edin və ya silin
+          Add or delete problem and lesson categories
         </p>
       </div>
-      <a href="index.html" class="btn btn-secondary">← Geri</a>
+      <a href="index.html" class="btn btn-secondary">← Back</a>
     </div>
     
     <div class="add-form-card">
-      <h2 style="margin-top: 0;">➕ Yeni Kateqoriya Əlavə Et</h2>
+      <h2 style="margin-top: 0;">➕ Add New Category</h2>
       <form id="add-form">
         <div class="form-grid">
           <div>
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
-              İngilis adı
+              English Name
             </label>
             <input 
               type="text" 
               id="name-en" 
-              placeholder="məsələn: Calculus" 
+              placeholder="e.g., Calculus" 
               required 
             />
           </div>
           <div>
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
-              Azərbaycan adı
+              Azerbaijani Name
             </label>
             <input 
               type="text" 
               id="name-az" 
-              placeholder="məsələn: Analizlər" 
+              placeholder="e.g., Analiz" 
               required 
             />
           </div>
         </div>
-        <button type="submit" id="submit-btn" class="btn">Əlavə Et</button>
+        <button type="submit" id="submit-btn" class="btn">Add Category</button>
       </form>
     </div>
 
     <div id="categories-list">
-      <div class="loading">Yüklənir...</div>
+      <div class="loading">Loading...</div>
     </div>
   </main>
 </body>
