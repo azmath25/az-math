@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kateqoriyaları İdarə Et - Az-Math</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <script type="module" src="../js/main.js" defer></script>
+  <script type="module" src="../js/menu.js" defer></script>
+  <style>
+    .categories-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .add-form-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-grid input {
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    .form-grid input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .category-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      background: white;
+      margin: 0.5rem 0;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+
+    .category-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .category-info {
+      flex: 1;
+    }
+
+    .category-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .category-name-az {
+      font-size: 0.9rem;
+      color: #6b7280;
+      margin-top: 0.25rem;
+    }
+
+    .category-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #6b7280;
+      background: white;
+      border-radius: 12px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #6b7280;
+    }
+  </style>
+  <script type="module">
+    import { protectAdminPage } from "../js/auth.js";
+    import { db, collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "../js/firebase.js";
+
+    protectAdminPage();
+
+    let categories = [];
+
+    async function loadCategories() {
+      const list = document.getElementById('categories-list');
+      list.innerHTML = '<div class="loading">Yüklənir...</div>';
+      
+      try {
+        const snap = await getDocs(collection(db, 'categories'));
+        categories = [];
+        snap.forEach(d => categories.push({ id: d.id, ...d.data() }));
+        
+        // Sort alphabetically by English name
+        categories.sort((a, b) => (a.nameEn || '').localeCompare(b.nameEn || ''));
+        
+        if (categories.length === 0) {
+          list.innerHTML = `
+            <div class="empty-state">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">📚</div>
+              <h3>Hələ kateqoriya yoxdur</h3>
+              <p>Yuxarıdaki formanı istifadə edərək ilk kateqoriyanızı əlavə edin</p>
+            </div>
+          `;
+          return;
+        }
+        
+        list.innerHTML = categories.map(c => `
+          <div class="category-item">
+            <div class="category-info">
+              <div class="category-name">${escapeHtml(c.nameEn)}</div>
+              <div class="category-name-az">${escapeHtml(c.nameAz)}</div>
+            </div>
+            <div class="category-actions">
+              <button onclick="editCategory('${c.id}')" class="btn btn-small" title="Redaktə et">
+                ✏️ Redaktə
+              </button>
+              <button onclick="deleteCategory('${c.id}')" class="btn btn-small btn-delete" title="Sil">
+                🗑️ Sil
+              </button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Error loading categories:', err);
+        list.innerHTML = '<div class="empty-state" style="color: #ef4444;">Xəta baş verdi. Yenidən yükləyin.</div>';
+      }
+    }
+
+    window.deleteCategory = async function(id) {
+      const category = categories.find(c => c.id === id);
+      if (!category) return;
+      
+      if (!confirm(`"${category.nameEn}" kateqoriyasını silmək istədiyinizdən əminsiniz?`)) return;
+      
+      try {
+        await deleteDoc(doc(db, 'categories', id));
+        alert('Kateqoriya uğurla silindi!');
+        loadCategories();
+      } catch (err) {
+        console.error('Error deleting:', err);
+        alert('Silinmədi: ' + err.message);
+      }
+    };
+
+    window.editCategory = async function(id) {
+      const category = categories.find(c => c.id === id);
+      if (!category) return;
+      
+      const newEn = prompt('İngilis adı:', category.nameEn);
+      if (!newEn) return;
+      
+      const newAz = prompt('Azərbaycan adı:', category.nameAz);
+      if (!newAz) return;
+      
+      try {
+        await updateDoc(doc(db, 'categories', id), {
+          nameEn: newEn.trim(),
+          nameAz: newAz.trim()
+        });
+        alert('Kateqoriya yeniləndi!');
+        loadCategories();
+      } catch (err) {
+        console.error('Error updating:', err);
+        alert('Yenilənmədi: ' + err.message);
+      }
+    };
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCategories();
+      
+      const addForm = document.getElementById('add-form');
+      const submitBtn = document.getElementById('submit-btn');
+      
+      addForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const en = document.getElementById('name-en').value.trim();
+        const az = document.getElementById('name-az').value.trim();
+        
+        if (!en || !az) {
+          alert('Xahiş edirik bütün sahələri doldurun');
+          return;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Əlavə edilir...';
+        
+        try {
+          await addDoc(collection(db, 'categories'), { 
+            nameEn: en, 
+            nameAz: az,
+            createdAt: new Date().toISOString()
+          });
+          alert('Kateqoriya əlavə edildi!');
+          addForm.reset();
+          document.getElementById('name-en').focus();
+          loadCategories();
+        } catch (err) {
+          console.error('Error adding:', err);
+          alert('Əlavə edilmədi: ' + err.message);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Əlavə Et';
+        }
+      });
+    });
+  </script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-left">
+      <button class="hamburger" id="menu-toggle">☰</button>
+      <span class="site-title">Az-Math Admin</span>
+    </div>
+    <div class="nav-right">
+      <img src="../assets/img/defaultprofile.png" class="profile-icon" id="profile-photo">
+    </div>
+  </header>
+
+  <nav class="sidebar" id="sidebar">
+    <ul>
+      <li><a href="../index.html">🏠 Ana Səhifə</a></li>
+      <li><a href="index.html">📊 İdarəetmə Paneli</a></li>
+      <li><a href="problems.html">📝 Məsələlər</a></li>
+      <li><a href="lessons.html">📚 Dərslər</a></li>
+      <li><a href="users.html">👥 İstifadəçilər</a></li>
+    </ul>
+  </nav>
+
+  <div id="menu"></div>
+
+  <main class="categories-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+      <div>
+        <h1>📚 Kateqoriyaları İdarə Et</h1>
+        <p style="color: #6b7280; margin-top: 0.5rem;">
+          Məsələ və dərs kateqoriyalarını əlavə edin və ya silin
+        </p>
+      </div>
+      <a href="index.html" class="btn btn-secondary">← Geri</a>
+    </div>
+    
+    <div class="add-form-card">
+      <h2 style="margin-top: 0;">➕ Yeni Kateqoriya Əlavə Et</h2>
+      <form id="add-form">
+        <div class="form-grid">
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+              İngilis adı
+            </label>
+            <input 
+              type="text" 
+              id="name-en" 
+              placeholder="məsələn: Calculus" 
+              required 
+            />
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+              Azərbaycan adı
+            </label>
+            <input 
+              type="text" 
+              id="name-az" 
+              placeholder="məsələn: Analizlər" 
+              required 
+            />
+          </div>
+        </div>
+        <button type="submit" id="submit-btn" class="btn">Əlavə Et</button>
+      </form>
+    </div>
+
+    <div id="categories-list">
+      <div class="loading">Yüklənir...</div>
+    </div>
+  </main>
+</body>
+</html>
