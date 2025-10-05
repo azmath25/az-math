@@ -8,11 +8,12 @@ import {
   onAuthStateChanged,
   doc,
   getDoc,
-  setDoc
+  setDoc,
+  updateDoc
 } from "./firebase.js";
 
 // Register user → create Firebase auth user and Firestore doc (pending role)
-export async function register(email, password) {
+export async function register(email, password, name = "") {
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     const uid = cred.user.uid;
@@ -20,8 +21,8 @@ export async function register(email, password) {
     // Create user document in Firestore
     await setDoc(doc(db, "Users", uid), {
       email,
+      name: name.trim() || "",
       role: "pending",
-      name: "",
       approved: false,
       createdAt: Date.now()
     });
@@ -68,6 +69,25 @@ export async function logout() {
   } catch (err) {
     console.error("Logout error:", err);
     alert("Logout failed: " + err.message);
+  }
+}
+
+// Update user name
+export async function updateUserName(newName) {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No user logged in");
+    }
+    
+    await updateDoc(doc(db, "Users", user.uid), {
+      name: newName.trim()
+    });
+    
+    return true;
+  } catch (err) {
+    console.error("Error updating name:", err);
+    throw err;
   }
 }
 
