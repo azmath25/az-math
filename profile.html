@@ -9,6 +9,8 @@
   <script type="module" src="js/menu.js" defer></script>
   <script type="module">
     import { onAuthState, updateUserName } from "./js/auth.js";
+    import { openPhotoUploadModal, uploadPhotoToStorage } from "./js/photo-utils.js";
+    import { db, doc, updateDoc } from "./js/firebase.js";
     
     document.addEventListener("DOMContentLoaded", () => {
       const userEmail = document.getElementById("user-email");
@@ -25,6 +27,8 @@
       const nameDisplay = document.getElementById("name-display");
       const nameEdit = document.getElementById("name-edit");
       const nameInput = document.getElementById("name-input");
+      const changePhotoBtn = document.getElementById("change-photo-btn");
+      const photoContainer = document.getElementById("photo-container");
 
       let currentUser = null;
 
@@ -117,8 +121,125 @@
           saveNameBtn.click();
         }
       });
+
+      // Change photo button
+      changePhotoBtn.addEventListener("click", () => {
+        if (!currentUser) {
+          alert("Please login first");
+          return;
+        }
+
+        openPhotoUploadModal({
+          currentPhotoURL: currentUser.photoURL || null,
+          aspectRatio: 1,
+          onSave: async (blob) => {
+            try {
+              // Show loading state
+              changePhotoBtn.disabled = true;
+              changePhotoBtn.textContent = "Uploading...";
+              
+              // Upload to Firebase Storage
+              const photoURL = await uploadPhotoToStorage(blob, currentUser.uid);
+              
+              // Update user document in Firestore
+              await updateDoc(doc(db, "Users", currentUser.uid), {
+                photoURL: photoURL
+              });
+              
+              // Update display
+              userPhoto.src = photoURL;
+              
+              // Update profile photo in header
+              const headerPhoto = document.getElementById("profile-photo");
+              if (headerPhoto) {
+                headerPhoto.src = photoURL;
+              }
+              
+              alert("Profile photo updated successfully!");
+            } catch (err) {
+              console.error("Error updating photo:", err);
+              alert("Failed to update photo: " + err.message);
+            } finally {
+              changePhotoBtn.disabled = false;
+              changePhotoBtn.textContent = "📷 Change Photo";
+            }
+          },
+          onCancel: () => {
+            console.log("Photo upload cancelled");
+          }
+        });
+      });
+
+      // Make photo clickable to change
+      photoContainer.addEventListener("click", () => {
+        if (currentUser) {
+          changePhotoBtn.click();
+        }
+      });
     });
   </script>
+  <style>
+    .profile-photo-container {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .profile-photo-large {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid #e2e8f0;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .profile-photo-large:hover {
+      border-color: #3b82f6;
+      transform: scale(1.05);
+    }
+
+    .photo-change-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+      cursor: pointer;
+      color: white;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .profile-photo-container:hover .photo-change-overlay {
+      opacity: 1;
+    }
+
+    .profile-card {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .profile-info {
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .profile-info p {
+      margin: 0.75rem 0;
+      text-align: left;
+    }
+  </style>
 </head>
 <body>
   <header class="navbar">
@@ -146,7 +267,14 @@
 
     <!-- Profile Card -->
     <div class="card profile-card">
-      <img src="assets/img/defaultprofile.png" id="user-photo" class="profile-photo-large" alt="Profile Photo">
+      <div class="profile-photo-container" id="photo-container">
+        <img src="assets/img/defaultprofile.png" id="user-photo" class="profile-photo-large" alt="Profile Photo">
+        <div class="photo-change-overlay">
+          <span>📷 Change Photo</span>
+        </div>
+      </div>
+
+      <button id="change-photo-btn" class="btn" style="margin-bottom: 1.5rem;">📷 Change Photo</button>
 
       <div class="profile-info">
         <p><strong>Email:</strong> <span id="user-email">Loading...</span></p>
