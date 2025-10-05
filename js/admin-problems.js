@@ -178,19 +178,29 @@ function applyFilters() {
   renderProblems();
 }
 
-// Create new problem
+// Create new problem - FIXED
 async function createNewProblem() {
   try {
-    // Get latest ID from meta/problems
+    addProblemBtn.disabled = true;
+    addProblemBtn.textContent = "Creating...";
+    
     const metaDocRef = doc(db, "meta", "problems");
     const metaDoc = await getDoc(metaDocRef);
     
     let nextId = 1;
     if (metaDoc.exists() && metaDoc.data().latestId) {
       nextId = metaDoc.data().latestId + 1;
+    } else {
+      // Fallback: scan existing problems for max ID
+      const problemsSnap = await getDocs(collection(db, "problems"));
+      let maxId = 0;
+      problemsSnap.forEach(doc => {
+        const id = doc.data().id;
+        if (id > maxId) maxId = id;
+      });
+      nextId = maxId + 1;
     }
     
-    // Create draft problem
     await setDoc(doc(db, "problems", String(nextId)), {
       id: nextId,
       title: "",
@@ -205,14 +215,13 @@ async function createNewProblem() {
       timestamp: serverTimestamp()
     });
     
-    // Update meta
     await setDoc(metaDocRef, { latestId: nextId }, { merge: true });
-    
-    // Redirect to edit page
     window.location.href = `edit-problem.html?id=${nextId}`;
   } catch (err) {
     console.error("Error creating problem:", err);
     alert("Failed to create problem: " + err.message);
+    addProblemBtn.disabled = false;
+    addProblemBtn.textContent = "➕ Add New Problem";
   }
 }
 
