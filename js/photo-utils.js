@@ -7,7 +7,8 @@ import { storage, ref, uploadBytes, getDownloadURL } from "./firebase.js";
  * Create and show a photo upload modal with cropping functionality
  * @param {Object} options - Configuration options
  * @param {string} options.currentPhotoURL - Current photo URL (optional)
- * @param {string} options.aspectRatio - Aspect ratio for cropping (default: 1 for square)
+ * @param {number} options.aspectRatio - Aspect ratio for cropping (default: 1 for square)
+ * @param {string} options.cropShape - 'circle' or 'rectangle' (default: 'circle')
  * @param {Function} options.onSave - Callback function when photo is saved (receives blob)
  * @param {Function} options.onCancel - Callback function when cancelled (optional)
  */
@@ -15,6 +16,7 @@ export function openPhotoUploadModal(options = {}) {
   const {
     currentPhotoURL = null,
     aspectRatio = 1,
+    cropShape = 'circle',
     onSave = () => {},
     onCancel = () => {}
   } = options;
@@ -25,7 +27,7 @@ export function openPhotoUploadModal(options = {}) {
   modal.innerHTML = `
     <div class="photo-modal">
       <div class="photo-modal-header">
-        <h3>Upload Profile Photo</h3>
+        <h3>Upload Image</h3>
         <button class="photo-modal-close" aria-label="Close">&times;</button>
       </div>
       
@@ -40,7 +42,7 @@ export function openPhotoUploadModal(options = {}) {
             <p class="photo-upload-hint">JPG, PNG or GIF (Max 5MB)</p>
           </div>
           ${currentPhotoURL ? `
-            <img src="${currentPhotoURL}" alt="Current photo" id="photo-preview" style="max-width: 200px; max-height: 200px; border-radius: 50%; object-fit: cover; margin-top: 1rem;" />
+            <img src="${currentPhotoURL}" alt="Current photo" id="photo-preview" style="max-width: 200px; max-height: 200px; ${cropShape === 'circle' ? 'border-radius: 50%;' : 'border-radius: 10px;'} object-fit: cover; margin-top: 1rem;" />
           ` : ''}
           <input type="file" id="photo-file-input" accept="image/*" style="display: none;" />
         </div>
@@ -57,7 +59,7 @@ export function openPhotoUploadModal(options = {}) {
       
       <div class="photo-modal-footer">
         <button type="button" class="btn btn-secondary" id="photo-cancel-btn">Cancel</button>
-        <button type="button" class="btn" id="photo-save-btn" style="display: none;">Save Photo</button>
+        <button type="button" class="btn" id="photo-save-btn" style="display: none;">Save Image</button>
       </div>
     </div>
   `;
@@ -77,8 +79,6 @@ export function openPhotoUploadModal(options = {}) {
   const zoomInBtn = modal.querySelector("#zoom-in-btn");
   const zoomOutBtn = modal.querySelector("#zoom-out-btn");
   const resetBtn = modal.querySelector("#reset-crop-btn");
-  const placeholder = modal.querySelector("#photo-placeholder");
-  const previewImg = modal.querySelector("#photo-preview");
 
   let currentImage = null;
   let scale = 1;
@@ -159,15 +159,33 @@ export function openPhotoUploadModal(options = {}) {
     cropContainer.style.display = "block";
     saveBtn.style.display = "inline-block";
 
-    // Set canvas size (square)
-    const maxSize = 400;
-    canvas.width = maxSize;
-    canvas.height = maxSize;
+    // Set canvas size based on aspect ratio and shape
+    const maxSize = 500;
+    let canvasWidth, canvasHeight;
+    
+    if (cropShape === 'circle') {
+      canvasWidth = canvasHeight = maxSize;
+    } else {
+      // Rectangle with aspect ratio
+      if (aspectRatio >= 1) {
+        canvasWidth = maxSize;
+        canvasHeight = maxSize / aspectRatio;
+      } else {
+        canvasHeight = maxSize;
+        canvasWidth = maxSize * aspectRatio;
+      }
+    }
+    
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
 
     // Reset transformation
-    scale = Math.min(maxSize / currentImage.width, maxSize / currentImage.height);
-    offsetX = (maxSize - currentImage.width * scale) / 2;
-    offsetY = (maxSize - currentImage.height * scale) / 2;
+    const scaleX = canvasWidth / currentImage.width;
+    const scaleY = canvasHeight / currentImage.height;
+    scale = Math.max(scaleX, scaleY); // Cover the canvas
+    
+    offsetX = (canvasWidth - currentImage.width * scale) / 2;
+    offsetY = (canvasHeight - currentImage.height * scale) / 2;
 
     drawImage();
   }
@@ -181,21 +199,38 @@ export function openPhotoUploadModal(options = {}) {
     ctx.drawImage(currentImage, 0, 0);
     ctx.restore();
 
-    // Draw crop circle overlay
+    // Draw crop overlay
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 10, 0, Math.PI * 2);
-    ctx.fill();
+    const cropMargin = 10;
     
-    ctx.globalCompositeOperation = "source-over";
-    ctx.strokeStyle = "#3b82f6";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 10, 0, Math.PI * 2);
-    ctx.stroke();
+    if (cropShape === 'circle') {
+      // Circle crop
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, (canvas.width / 2) - cropMargin, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, (canvas.width / 2) - cropMargin, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      // Rectangle crop
+      const cropWidth = canvas.width - (cropMargin * 2);
+      const cropHeight = canvas.height - (cropMargin * 2);
+      
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillRect(cropMargin, cropMargin, cropWidth, cropHeight);
+      
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(cropMargin, cropMargin, cropWidth, cropHeight);
+    }
   }
 
   // Canvas mouse events for panning
@@ -228,6 +263,37 @@ export function openPhotoUploadModal(options = {}) {
     canvas.style.cursor = "grab";
   });
 
+  // Touch events for mobile
+  canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    isDragging = true;
+    startX = touch.clientX - rect.left;
+    startY = touch.clientY - rect.top;
+  });
+
+  canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    if (isDragging) {
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const currentX = touch.clientX - rect.left;
+      const currentY = touch.clientY - rect.top;
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+      offsetX += dx;
+      offsetY += dy;
+      startX = currentX;
+      startY = currentY;
+      drawImage();
+    }
+  });
+
+  canvas.addEventListener("touchend", () => {
+    isDragging = false;
+  });
+
   // Zoom controls
   zoomInBtn.addEventListener("click", () => {
     scale *= 1.2;
@@ -241,7 +307,9 @@ export function openPhotoUploadModal(options = {}) {
 
   resetBtn.addEventListener("click", () => {
     if (currentImage) {
-      scale = Math.min(canvas.width / currentImage.width, canvas.height / currentImage.height);
+      const scaleX = canvas.width / currentImage.width;
+      const scaleY = canvas.height / currentImage.height;
+      scale = Math.max(scaleX, scaleY);
       offsetX = (canvas.width - currentImage.width * scale) / 2;
       offsetY = (canvas.height - currentImage.height * scale) / 2;
       drawImage();
@@ -254,33 +322,55 @@ export function openPhotoUploadModal(options = {}) {
 
     // Create final cropped canvas
     const finalCanvas = document.createElement("canvas");
-    const finalSize = 500; // Output size
-    finalCanvas.width = finalSize;
-    finalCanvas.height = finalSize;
+    const finalSize = 800; // Output size
+    const cropMargin = 10;
+    
+    let finalWidth, finalHeight, cropWidth, cropHeight;
+    
+    if (cropShape === 'circle') {
+      finalWidth = finalHeight = finalSize;
+      cropWidth = cropHeight = canvas.width - (cropMargin * 2);
+    } else {
+      if (aspectRatio >= 1) {
+        finalWidth = finalSize;
+        finalHeight = finalSize / aspectRatio;
+      } else {
+        finalHeight = finalSize;
+        finalWidth = finalSize * aspectRatio;
+      }
+      cropWidth = canvas.width - (cropMargin * 2);
+      cropHeight = canvas.height - (cropMargin * 2);
+    }
+    
+    finalCanvas.width = finalWidth;
+    finalCanvas.height = finalHeight;
     const finalCtx = finalCanvas.getContext("2d");
 
-    // Draw cropped image
-    const cropSize = canvas.width - 20; // Circle radius * 2
-    const sourceSize = cropSize / scale;
-    const sourceX = (canvas.width / 2 - offsetX) / scale - sourceSize / 2;
-    const sourceY = (canvas.height / 2 - offsetY) / scale - sourceSize / 2;
+    // Calculate source dimensions
+    const sourceWidth = cropWidth / scale;
+    const sourceHeight = cropHeight / scale;
+    const sourceX = (canvas.width / 2 - offsetX) / scale - sourceWidth / 2;
+    const sourceY = (canvas.height / 2 - offsetY) / scale - sourceHeight / 2;
 
-    finalCtx.beginPath();
-    finalCtx.arc(finalSize / 2, finalSize / 2, finalSize / 2, 0, Math.PI * 2);
-    finalCtx.closePath();
-    finalCtx.clip();
+    if (cropShape === 'circle') {
+      // Circular clip
+      finalCtx.beginPath();
+      finalCtx.arc(finalWidth / 2, finalHeight / 2, finalWidth / 2, 0, Math.PI * 2);
+      finalCtx.closePath();
+      finalCtx.clip();
+    }
 
     finalCtx.drawImage(
       currentImage,
-      sourceX, sourceY, sourceSize, sourceSize,
-      0, 0, finalSize, finalSize
+      sourceX, sourceY, sourceWidth, sourceHeight,
+      0, 0, finalWidth, finalHeight
     );
 
     // Convert to blob and callback
     finalCanvas.toBlob((blob) => {
       closeModal();
       onSave(blob);
-    }, "image/jpeg", 0.9);
+    }, "image/jpeg", 0.92);
   });
 
   // Close buttons
@@ -294,12 +384,12 @@ export function openPhotoUploadModal(options = {}) {
 /**
  * Upload photo blob to Firebase Storage
  * @param {Blob} blob - Image blob to upload
- * @param {string} userId - User ID for storage path
+ * @param {string} path - Storage path (e.g., 'profile_photos/user123' or 'problem_images/img456')
  * @returns {Promise<string>} Download URL of uploaded photo
  */
-export async function uploadPhotoToStorage(blob, userId) {
+export async function uploadPhotoToStorage(blob, path) {
   try {
-    const filename = `profile_photos/${userId}_${Date.now()}.jpg`;
+    const filename = `${path}_${Date.now()}.jpg`;
     const storageRef = ref(storage, filename);
     
     await uploadBytes(storageRef, blob, {
@@ -340,7 +430,7 @@ function addPhotoModalStyles() {
     .photo-modal {
       background: white;
       border-radius: 16px;
-      max-width: 500px;
+      max-width: 600px;
       width: 100%;
       max-height: 90vh;
       overflow-y: auto;
