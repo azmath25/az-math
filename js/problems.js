@@ -125,8 +125,17 @@ function getStatementPreview(statement = []) {
   
   if (firstTextBlock) {
     const content = firstTextBlock.content || "";
-    const truncated = content.length > 250 ? content.substring(0, 250) + "..." : content;
-    return `<p>${truncated}</p>`;
+    
+    // Strip HTML tags and decode entities for preview
+    const temp = document.createElement('div');
+    temp.innerHTML = content;
+    const textOnly = temp.textContent || temp.innerText || "";
+    
+    // Truncate
+    const truncated = textOnly.length > 250 ? textOnly.substring(0, 250) + "..." : textOnly;
+    
+    // Escape for safety and return
+    return `<p>${escapeHtml(truncated)}</p>`;
   }
   
   // If no text block, show placeholder
