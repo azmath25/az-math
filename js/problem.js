@@ -9,7 +9,8 @@ function renderBlock(block) {
   
   switch (block.type) {
     case "text":
-      return `<div class="block-text">${escapeHtml(block.content || "")}</div>`;
+      // Don't escape HTML for rich text content - render as HTML
+      return `<div class="block-text">${block.content || ""}</div>`;
     
     case "image":
       return `<div class="block-image">
@@ -33,7 +34,7 @@ function renderBlock(block) {
   }
 }
 
-// Escape HTML
+// Escape HTML (only for user-generated content that should be escaped)
 function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
