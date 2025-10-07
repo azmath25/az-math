@@ -284,49 +284,55 @@ function showMathModal(editor) {
   });
   
   insertBtn.addEventListener("click", () => {
-    const latex = latexInput.value.trim();
-    if (!latex) {
-      alert("Please enter LaTeX code");
-      return;
-    }
+  const latex = latexInput.value.trim();
+  if (!latex) {
+    alert("Please enter LaTeX code");
+    return;
+  }
+  
+  const mode = modal.querySelector('input[name="math-mode"]:checked').value;
+  const mathText = mode === 'inline' ? `$${latex}$` : `$$${latex}$$`;
+  
+  // Focus editor first
+  editor.focus();
+  
+  // Get current selection
+  const selection = window.getSelection();
+  
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
     
-    const mode = modal.querySelector('input[name="math-mode"]:checked').value;
-    const mathText = mode === 'inline' ? `$${latex}$` : `$$${latex}$$`;
+    // Create the math span
+    const mathSpan = document.createElement('span');
+    mathSpan.className = 'math-formula';
+    mathSpan.textContent = mathText;
     
-    // Insert into editor at cursor position
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      
-      const mathSpan = document.createElement('span');
-      mathSpan.className = 'math-formula';
-      mathSpan.textContent = mathText;
-      
-      range.insertNode(mathSpan);
-      
-      // Add space after
-      const space = document.createTextNode('\u00A0');
-      range.setStartAfter(mathSpan);
-      range.insertNode(space);
-      range.setStartAfter(space);
-      range.collapse(true);
-      
-      selection.removeAllRanges();
-      selection.addRange(range);
-    } else {
-      // Fallback: append to end
-      const mathSpan = document.createElement('span');
-      mathSpan.className = 'math-formula';
-      mathSpan.textContent = mathText;
-      editor.appendChild(mathSpan);
-      editor.appendChild(document.createTextNode('\u00A0'));
-    }
+    // Delete any selected content
+    range.deleteContents();
     
-    editor.focus();
-    closeModal();
-  });
-}
+    // Insert the math span
+    range.insertNode(mathSpan);
+    
+    // Add space after math
+    const space = document.createTextNode('\u00A0');
+    range.setStartAfter(mathSpan);
+    range.insertNode(space);
+    
+    // Move cursor after the space
+    range.setStartAfter(space);
+    range.collapse(true);
+    
+    // Update selection
+    selection.removeAllRanges();
+    selection.addRange(range);
+  } else {
+    // Fallback: use execCommand
+    document.execCommand('insertHTML', false, `<span class="math-formula">${mathText}</span>&nbsp;`);
+  }
+  
+  editor.focus();
+  closeModal();
+});
 
 // Get content from rich text editor
 function getRichTextContent(editorDiv) {
