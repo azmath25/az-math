@@ -13,141 +13,240 @@ import { auth } from "../js/firebase.js";
 
 let solutionCounter = 0;
 
-// Create formatting toolbar for rich text
-function createFormattingToolbar(textarea) {
+// Create rich text editor toolbar
+function createRichTextToolbar(editor) {
   const toolbar = document.createElement("div");
-  toolbar.className = "formatting-toolbar";
+  toolbar.className = "rte-toolbar";
   
   toolbar.innerHTML = `
-    <button type="button" class="format-btn" data-command="bold" title="Bold (Ctrl+B)">
-      <strong>B</strong>
-    </button>
-    <button type="button" class="format-btn" data-command="italic" title="Italic (Ctrl+I)">
-      <em>I</em>
-    </button>
-    <button type="button" class="format-btn" data-command="link" title="Insert Link">
-      🔗
-    </button>
-    <div class="toolbar-divider"></div>
-    <select class="text-size-select">
-      <option value="normal">Normal Text</option>
-      <option value="large">Heading</option>
-      <option value="small">Small Text</option>
-    </select>
+    <div class="rte-toolbar-group">
+      <button type="button" class="rte-btn" data-command="bold" title="Bold (Ctrl+B)">
+        <strong>B</strong>
+      </button>
+      <button type="button" class="rte-btn" data-command="italic" title="Italic (Ctrl+I)">
+        <em>I</em>
+      </button>
+      <button type="button" class="rte-btn" data-command="underline" title="Underline (Ctrl+U)">
+        <u>U</u>
+      </button>
+    </div>
+    
+    <div class="rte-toolbar-divider"></div>
+    
+    <div class="rte-toolbar-group">
+      <select class="rte-select" data-command="formatBlock">
+        <option value="">Normal</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+        <option value="h4">Heading 4</option>
+      </select>
+      
+      <select class="rte-select" data-command="fontSize">
+        <option value="">Normal Size</option>
+        <option value="1">Very Small</option>
+        <option value="2">Small</option>
+        <option value="3">Normal</option>
+        <option value="4">Large</option>
+        <option value="5">Very Large</option>
+        <option value="6">Huge</option>
+      </select>
+    </div>
+    
+    <div class="rte-toolbar-divider"></div>
+    
+    <div class="rte-toolbar-group">
+      <button type="button" class="rte-btn" data-command="insertUnorderedList" title="Bullet List">
+        • List
+      </button>
+      <button type="button" class="rte-btn" data-command="insertOrderedList" title="Numbered List">
+        1. List
+      </button>
+    </div>
+    
+    <div class="rte-toolbar-divider"></div>
+    
+    <div class="rte-toolbar-group">
+      <button type="button" class="rte-btn" data-command="justifyLeft" title="Align Left">
+        ⬅
+      </button>
+      <button type="button" class="rte-btn" data-command="justifyCenter" title="Align Center">
+        ↔
+      </button>
+      <button type="button" class="rte-btn" data-command="justifyRight" title="Align Right">
+        ➡
+      </button>
+    </div>
+    
+    <div class="rte-toolbar-divider"></div>
+    
+    <div class="rte-toolbar-group">
+      <button type="button" class="rte-btn" data-command="createLink" title="Insert Link">
+        🔗
+      </button>
+      <button type="button" class="rte-btn" data-command="insertMath" title="Insert Math (LaTeX)">
+        𝑓(x)
+      </button>
+    </div>
+    
+    <div class="rte-toolbar-divider"></div>
+    
+    <div class="rte-toolbar-group">
+      <button type="button" class="rte-btn" data-command="removeFormat" title="Clear Formatting">
+        ✕
+      </button>
+    </div>
   `;
-  
-  // Attach event listeners
-  toolbar.querySelectorAll(".format-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      const command = btn.dataset.command;
-      applyFormatting(textarea, command);
-    });
-  });
-  
-  toolbar.querySelector(".text-size-select").addEventListener("change", (e) => {
-    applyTextSize(textarea, e.target.value);
-  });
   
   return toolbar;
 }
 
-// Apply text formatting
-function applyFormatting(textarea, command) {
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const selectedText = textarea.value.substring(start, end);
+// Initialize rich text editor
+function initializeRichTextEditor(container, initialContent = "") {
+  const wrapper = document.createElement("div");
+  wrapper.className = "rte-wrapper";
   
-  if (!selectedText) {
-    alert("Please select text first");
-    return;
-  }
+  const toolbar = createRichTextToolbar();
+  wrapper.appendChild(toolbar);
   
-  let formattedText = "";
+  const editorDiv = document.createElement("div");
+  editorDiv.className = "rte-editor";
+  editorDiv.contentEditable = true;
+  editorDiv.innerHTML = initialContent || '<p><br></p>';
+  editorDiv.setAttribute("data-placeholder", "Type your content here... Use $math$ for inline math and $$math$$ for display math");
   
-  switch (command) {
-    case "bold":
-      formattedText = `<strong>${selectedText}</strong>`;
-      break;
-    case "italic":
-      formattedText = `<em>${selectedText}</em>`;
-      break;
-    case "link":
-      showLinkModal(textarea, selectedText, start, end);
-      return;
-  }
+  wrapper.appendChild(editorDiv);
+  container.appendChild(wrapper);
   
-  // Replace selected text
-  textarea.value = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
+  // Attach toolbar event listeners
+  toolbar.querySelectorAll(".rte-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const command = btn.dataset.command;
+      handleCommand(command, editorDiv);
+    });
+  });
   
-  // Set cursor position after inserted text
-  const newPos = start + formattedText.length;
-  textarea.setSelectionRange(newPos, newPos);
-  textarea.focus();
+  toolbar.querySelectorAll(".rte-select").forEach(select => {
+    select.addEventListener("change", (e) => {
+      const command = select.dataset.command;
+      const value = select.value;
+      if (value) {
+        document.execCommand(command, false, value);
+        editorDiv.focus();
+      }
+      select.value = "";
+    });
+  });
+  
+  // Keyboard shortcuts
+  editorDiv.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      switch(e.key.toLowerCase()) {
+        case 'b':
+          e.preventDefault();
+          document.execCommand('bold');
+          break;
+        case 'i':
+          e.preventDefault();
+          document.execCommand('italic');
+          break;
+        case 'u':
+          e.preventDefault();
+          document.execCommand('underline');
+          break;
+      }
+    }
+  });
+  
+  return { wrapper, editorDiv };
 }
 
-// Apply text size
-function applyTextSize(textarea, size) {
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const selectedText = textarea.value.substring(start, end);
+// Handle toolbar commands
+function handleCommand(command, editor) {
+  editor.focus();
   
-  if (!selectedText) {
-    alert("Please select text first");
-    return;
-  }
-  
-  let formattedText = "";
-  
-  switch (size) {
-    case "large":
-      formattedText = `<div class="text-size-large">${selectedText}</div>`;
+  switch(command) {
+    case 'createLink':
+      const url = prompt("Enter URL:", "https://");
+      if (url) {
+        document.execCommand('createLink', false, url);
+      }
       break;
-    case "small":
-      formattedText = `<div class="text-size-small">${selectedText}</div>`;
+      
+    case 'insertMath':
+      showMathModal(editor);
       break;
-    case "normal":
+      
     default:
-      formattedText = `<div class="text-size-normal">${selectedText}</div>`;
-      break;
+      document.execCommand(command, false, null);
   }
-  
-  textarea.value = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
-  
-  const newPos = start + formattedText.length;
-  textarea.setSelectionRange(newPos, newPos);
-  textarea.focus();
 }
 
-// Show link insertion modal
-function showLinkModal(textarea, selectedText, start, end) {
+// Show math insertion modal
+function showMathModal(editor) {
   const modal = document.createElement("div");
-  modal.className = "link-modal-overlay";
+  modal.className = "math-modal-overlay";
   
   modal.innerHTML = `
-    <div class="link-modal">
-      <h3>Insert Link</h3>
-      <label>Link Text</label>
-      <input type="text" id="link-text-input" value="${escapeHtml(selectedText)}" />
+    <div class="math-modal">
+      <h3>Insert Math (LaTeX)</h3>
       
-      <label>URL</label>
-      <input type="url" id="link-url-input" placeholder="https://..." />
+      <div class="math-mode-selector">
+        <label>
+          <input type="radio" name="math-mode" value="inline" checked />
+          Inline Math: $...$
+        </label>
+        <label>
+          <input type="radio" name="math-mode" value="display" />
+          Display Math: $$...$$
+        </label>
+      </div>
       
-      <div class="link-modal-actions">
-        <button type="button" class="btn-cancel">Cancel</button>
-        <button type="button" class="btn-insert">Insert Link</button>
+      <label>LaTeX Code</label>
+      <textarea id="math-latex-input" placeholder="e.g., x^2 + y^2 = r^2" rows="4"></textarea>
+      
+      <div class="math-preview" id="math-preview-area">
+        <small>Preview will appear here</small>
+      </div>
+      
+      <div class="math-modal-actions">
+        <button type="button" class="btn btn-secondary" id="math-cancel-btn">Cancel</button>
+        <button type="button" class="btn" id="math-insert-btn">Insert</button>
       </div>
     </div>
   `;
   
   document.body.appendChild(modal);
   
-  const textInput = modal.querySelector("#link-text-input");
-  const urlInput = modal.querySelector("#link-url-input");
-  const cancelBtn = modal.querySelector(".btn-cancel");
-  const insertBtn = modal.querySelector(".btn-insert");
+  const latexInput = modal.querySelector("#math-latex-input");
+  const previewArea = modal.querySelector("#math-preview-area");
+  const cancelBtn = modal.querySelector("#math-cancel-btn");
+  const insertBtn = modal.querySelector("#math-insert-btn");
+  const modeRadios = modal.querySelectorAll('input[name="math-mode"]');
   
-  urlInput.focus();
+  latexInput.focus();
+  
+  // Live preview
+  let previewTimeout;
+  latexInput.addEventListener("input", () => {
+    clearTimeout(previewTimeout);
+    previewTimeout = setTimeout(() => {
+      const latex = latexInput.value.trim();
+      if (latex) {
+        const mode = modal.querySelector('input[name="math-mode"]:checked').value;
+        const wrapped = mode === 'inline' ? `$${latex}$` : `$$${latex}$$`;
+        previewArea.innerHTML = wrapped;
+        
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([previewArea]).catch(err => {
+            previewArea.innerHTML = '<small style="color: red;">Invalid LaTeX</small>';
+          });
+        }
+      } else {
+        previewArea.innerHTML = '<small>Preview will appear here</small>';
+      }
+    }, 500);
+  });
   
   const closeModal = () => modal.remove();
   
@@ -157,23 +256,26 @@ function showLinkModal(textarea, selectedText, start, end) {
   });
   
   insertBtn.addEventListener("click", () => {
-    const linkText = textInput.value.trim();
-    const url = urlInput.value.trim();
-    
-    if (!linkText || !url) {
-      alert("Please fill in both fields");
+    const latex = latexInput.value.trim();
+    if (!latex) {
+      alert("Please enter LaTeX code");
       return;
     }
     
-    const formattedText = `<a href="${url}" target="_blank">${linkText}</a>`;
-    textarea.value = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
+    const mode = modal.querySelector('input[name="math-mode"]:checked').value;
+    const mathText = mode === 'inline' ? `$${latex}$` : `$$${latex}$$`;
     
-    const newPos = start + formattedText.length;
-    textarea.setSelectionRange(newPos, newPos);
-    textarea.focus();
+    // Insert into editor
+    document.execCommand('insertHTML', false, `<span class="math-formula">${mathText}</span>&nbsp;`);
+    editor.focus();
     
     closeModal();
   });
+}
+
+// Get content from rich text editor
+function getRichTextContent(editorDiv) {
+  return editorDiv.innerHTML;
 }
 
 // Create block element for editing
@@ -182,8 +284,6 @@ function createBlockElement(block = { type: "text", content: "" }) {
   wrapper.className = "block-editor";
   
   if (block.type === "text") {
-    const toolbar = createFormattingToolbar(null);
-    
     wrapper.innerHTML = `
       <div class="block-header">
         <span>📝 Text Block</span>
@@ -195,28 +295,12 @@ function createBlockElement(block = { type: "text", content: "" }) {
       </div>
     `;
     
-    wrapper.appendChild(toolbar);
+    const editorContainer = document.createElement("div");
+    editorContainer.className = "rte-container";
+    wrapper.appendChild(editorContainer);
     
-    const textarea = document.createElement("textarea");
-    textarea.className = "block-textarea rich-textarea";
-    textarea.placeholder = "Enter text (supports $math$, $$display math$$, and HTML formatting)";
-    textarea.value = block.content || "";
-    
-    wrapper.appendChild(textarea);
-    
-    // Re-attach toolbar functionality to this specific textarea
-    const toolbarInWrapper = wrapper.querySelector(".formatting-toolbar");
-    toolbarInWrapper.querySelectorAll(".format-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const command = btn.dataset.command;
-        applyFormatting(textarea, command);
-      });
-    });
-    
-    toolbarInWrapper.querySelector(".text-size-select").addEventListener("change", (e) => {
-      applyTextSize(textarea, e.target.value);
-    });
+    // Initialize rich text editor
+    initializeRichTextEditor(editorContainer, block.content || "");
     
   } else if (block.type === "image") {
     wrapper.innerHTML = `
@@ -321,11 +405,12 @@ function createBlockElement(block = { type: "text", content: "" }) {
   return wrapper;
 }
 
-// Handle image upload
+// Handle image upload with rectangular cropper
 async function handleImageUpload(wrapper) {
   openPhotoUploadModal({
     currentPhotoURL: null,
-    aspectRatio: 16 / 9, // Wide aspect ratio for content images
+    aspectRatio: 16 / 9,
+    cropShape: 'rectangle',
     onSave: async (blob) => {
       try {
         const user = auth.currentUser;
@@ -334,31 +419,26 @@ async function handleImageUpload(wrapper) {
           return;
         }
         
-        // Show loading state
         const uploadArea = wrapper.querySelector(".image-upload-area");
         if (uploadArea) {
           uploadArea.innerHTML = `
-            <p>Uploading...</p>
-            <div style="margin-top: 1rem;">⏳</div>
+            <p style="color: #667eea; font-weight: 600;">Uploading...</p>
+            <div style="margin-top: 1rem; font-size: 2rem;">⏳</div>
           `;
         }
         
-        // Upload to Firebase Storage
-        const imageUrl = await uploadPhotoToStorage(blob, `problem_images/${user.uid}_${Date.now()}`);
+        const imageUrl = await uploadPhotoToStorage(blob, `problem_images/${user.uid}`);
         
-        // Update input and show preview
         const urlInput = wrapper.querySelector(".image-url-input");
         if (urlInput) {
           urlInput.value = imageUrl;
         }
         
-        // Remove existing preview if any
         const existingPreview = wrapper.querySelector(".image-preview-container");
         if (existingPreview) {
           existingPreview.remove();
         }
         
-        // Add new preview
         const container = wrapper.querySelector(".image-input-container");
         const previewDiv = document.createElement("div");
         previewDiv.className = "image-preview-container";
@@ -368,13 +448,11 @@ async function handleImageUpload(wrapper) {
         `;
         container.appendChild(previewDiv);
         
-        // Attach remove handler
         previewDiv.querySelector(".remove-preview").addEventListener("click", () => {
           previewDiv.remove();
           if (urlInput) urlInput.value = "";
         });
         
-        // Reset upload area
         if (uploadArea) {
           uploadArea.innerHTML = `
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -389,28 +467,13 @@ async function handleImageUpload(wrapper) {
       } catch (err) {
         console.error("Error uploading image:", err);
         alert("Failed to upload image: " + err.message);
-        
-        // Reset upload area on error
-        const uploadArea = wrapper.querySelector(".image-upload-area");
-        if (uploadArea) {
-          uploadArea.innerHTML = `
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <p>Click to upload image</p>
-            <p class="upload-hint">JPG, PNG, or GIF (Max 5MB)</p>
-          `;
-        }
       }
     },
-    onCancel: () => {
-      // Do nothing on cancel
-    }
+    onCancel: () => {}
   });
 }
 
-// Move block up or down
+// Move block
 function moveBlock(blockElement, direction) {
   const container = blockElement.parentElement;
   const blocks = Array.from(container.children);
@@ -431,12 +494,12 @@ function gatherBlocksFromContainer(container) {
   const blocks = [];
   
   container.querySelectorAll(".block-editor").forEach(blockEl => {
-    const textarea = blockEl.querySelector(".block-textarea");
+    const rteEditor = blockEl.querySelector(".rte-editor");
     const input = blockEl.querySelector(".block-input");
     const urlInput = blockEl.querySelector(".image-url-input");
     
-    if (textarea) {
-      blocks.push({ type: "text", content: textarea.value });
+    if (rteEditor) {
+      blocks.push({ type: "text", content: getRichTextContent(rteEditor) });
     } else if (urlInput) {
       const uploadMode = blockEl.querySelector(".mode-btn.active")?.dataset.mode || "url";
       blocks.push({ 
@@ -489,7 +552,6 @@ function renderSolutionUI(solution) {
   container.appendChild(blocksContainer);
   container.appendChild(actions);
   
-  // Attach event listeners
   actions.querySelector(".add-text").addEventListener("click", () => {
     blocksContainer.appendChild(createBlockElement({ type: "text", content: "" }));
   });
@@ -519,13 +581,12 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Render block for preview (with MathJax and HTML)
+// Render block preview
 function renderBlockPreview(block) {
   if (!block) return "";
   
   switch (block.type) {
     case "text":
-      // Don't escape HTML for rich text content
       return `<div class="block-text">${block.content || ""}</div>`;
     case "image":
       return `<div class="block-image"><img src="${escapeHtml(block.url || "")}" alt="Problem image" style="max-width:100%; border-radius: 8px; margin: 1rem 0;" /></div>`;
@@ -561,7 +622,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const publishBtn = document.getElementById("publish-btn");
   const previewBtn = document.getElementById("preview-btn");
   
-  // Load categories dynamically
   let currentCategory = '';
   if (problemId) {
     try {
@@ -576,7 +636,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   await populateCategorySelect(categoryInput, currentCategory);
   
-  // Add block handlers for statement
   addTextBtn.addEventListener("click", () => {
     statementBlocks.appendChild(createBlockElement({ type: "text", content: "" }));
   });
@@ -590,13 +649,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     statementBlocks.appendChild(createBlockElement({ type: "lesson", lessonId: "" }));
   });
   
-  // Add solution handler
   addSolutionBtn.addEventListener("click", () => {
     solutionCounter++;
     solutionsContainer.appendChild(renderSolutionUI({ id: solutionCounter, blocks: [] }));
   });
   
-  // Load existing problem if ID provided
   if (problemId) {
     problemIdInput.value = problemId;
     
@@ -612,13 +669,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         tagsInput.value = (data.tags || []).join(", ");
         lessonRefsInput.value = (data.lessons || []).join(", ");
         
-        // Load statement blocks
         statementBlocks.innerHTML = "";
         (data.statement || []).forEach(block => {
           statementBlocks.appendChild(createBlockElement(block));
         });
         
-        // Load solutions
         solutionsContainer.innerHTML = "";
         (data.solutions || []).forEach(solution => {
           if (solution.id > solutionCounter) solutionCounter = solution.id;
@@ -631,7 +686,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
   
-  // Save problem
   async function saveProblem(publish = false) {
     const pid = problemIdInput.value;
     if (!pid) {
@@ -639,7 +693,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     
-    // Gather solutions
     const solutions = [];
     solutionsContainer.querySelectorAll(".solution-editor").forEach((solEl, index) => {
       const solId = parseInt(solEl.dataset.solutionId) || (index + 1);
@@ -680,12 +733,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   saveDraftBtn.addEventListener("click", () => saveProblem(false));
   publishBtn.addEventListener("click", () => saveProblem(true));
   
-  // Preview
   previewBtn.addEventListener("click", () => {
     const editorForm = document.getElementById("editor-form");
     const previewMode = document.getElementById("preview-mode");
     
-    // Toggle visibility
     if (previewMode.style.display === "block") {
       editorForm.style.display = "block";
       previewMode.style.display = "none";
@@ -697,28 +748,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     previewMode.style.display = "block";
     previewBtn.textContent = "✏️ Edit";
     
-    // Render preview
     const title = titleInput.value || `Problem #${problemIdInput.value}`;
     document.getElementById("preview-title").textContent = title;
     document.getElementById("preview-id").textContent = `#${problemIdInput.value}`;
     document.getElementById("preview-category").textContent = categoryInput.value || "General";
     document.getElementById("preview-difficulty").textContent = difficultyInput.value;
     
-    // Tags
     const previewTags = document.getElementById("preview-tags");
     previewTags.innerHTML = "";
     tagsInput.value.split(",").map(t => t.trim()).filter(Boolean).forEach(tag => {
       previewTags.insertAdjacentHTML("beforeend", `<span class="tag">${escapeHtml(tag)}</span>`);
     });
     
-    // Statement
     const previewStatement = document.getElementById("preview-statement");
     previewStatement.innerHTML = "";
     gatherBlocksFromContainer(statementBlocks).forEach(block => {
       previewStatement.insertAdjacentHTML("beforeend", renderBlockPreview(block));
     });
     
-    // Solutions
     const previewSolutions = document.getElementById("preview-solutions");
     previewSolutions.innerHTML = "";
     
@@ -735,7 +782,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       previewSolutions.appendChild(solDiv);
     });
     
-    // Typeset MathJax
     if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise([previewMode]).catch(err => {
         console.error("MathJax error:", err);
@@ -743,4 +789,3 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 });
-      
