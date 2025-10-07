@@ -112,7 +112,15 @@ function getStatementPreview(statement = []) {
   
   if (firstTextBlock) {
     const content = firstTextBlock.content || "";
-    const truncated = content.length > 200 ? content.substring(0, 200) + "..." : content;
+    
+    // Strip HTML tags and decode entities for preview
+    const temp = document.createElement('div');
+    temp.innerHTML = content;
+    const textOnly = temp.textContent || temp.innerText || "";
+    
+    // Truncate to 200 chars (admin has shorter preview)
+    const truncated = textOnly.length > 200 ? textOnly.substring(0, 200) + "..." : textOnly;
+    
     return `<p>${escapeHtml(truncated)}</p>`;
   }
   
