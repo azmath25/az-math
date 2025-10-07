@@ -34,22 +34,18 @@ function createRichTextToolbar(editor) {
     <div class="rte-toolbar-divider"></div>
     
     <div class="rte-toolbar-group">
-      <select class="rte-select" data-command="formatBlock">
-        <option value="">Normal</option>
-        <option value="h2">Heading 2</option>
-        <option value="h3">Heading 3</option>
-        <option value="h4">Heading 4</option>
-      </select>
-      
-      <select class="rte-select" data-command="fontSize">
-        <option value="">Normal Size</option>
-        <option value="1">Very Small</option>
-        <option value="2">Small</option>
-        <option value="3">Normal</option>
-        <option value="4">Large</option>
-        <option value="5">Very Large</option>
-        <option value="6">Huge</option>
-      </select>
+      <button type="button" class="rte-btn rte-btn-wide" data-command="formatBlock" data-value="p" title="Normal Text">
+        Normal
+      </button>
+      <button type="button" class="rte-btn rte-btn-wide" data-command="formatBlock" data-value="h2" title="Large Heading">
+        Heading 2
+      </button>
+      <button type="button" class="rte-btn rte-btn-wide" data-command="formatBlock" data-value="h3" title="Medium Heading">
+        Heading 3
+      </button>
+      <button type="button" class="rte-btn rte-btn-wide" data-command="formatBlock" data-value="h4" title="Small Heading">
+        Heading 4
+      </button>
     </div>
     
     <div class="rte-toolbar-divider"></div>
@@ -83,8 +79,8 @@ function createRichTextToolbar(editor) {
       <button type="button" class="rte-btn" data-command="createLink" title="Insert Link">
         🔗
       </button>
-      <button type="button" class="rte-btn" data-command="insertMath" title="Insert Math (LaTeX)">
-        𝑓(x)
+      <button type="button" class="rte-btn rte-btn-math" data-command="insertMath" title="Insert Math (LaTeX)">
+        <em>f(x)</em>
       </button>
     </div>
     
@@ -112,7 +108,7 @@ function initializeRichTextEditor(container, initialContent = "") {
   editorDiv.className = "rte-editor";
   editorDiv.contentEditable = true;
   editorDiv.innerHTML = initialContent || '<p><br></p>';
-  editorDiv.setAttribute("data-placeholder", "Type your content here... Use $math$ for inline math and $$math$$ for display math");
+  editorDiv.setAttribute("data-placeholder", "Type your content here... You can type $math$ for inline math or $$math$$ for display math");
   
   wrapper.appendChild(editorDiv);
   container.appendChild(wrapper);
@@ -122,19 +118,8 @@ function initializeRichTextEditor(container, initialContent = "") {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       const command = btn.dataset.command;
-      handleCommand(command, editorDiv);
-    });
-  });
-  
-  toolbar.querySelectorAll(".rte-select").forEach(select => {
-    select.addEventListener("change", (e) => {
-      const command = select.dataset.command;
-      const value = select.value;
-      if (value) {
-        document.execCommand(command, false, value);
-        editorDiv.focus();
-      }
-      select.value = "";
+      const value = btn.dataset.value;
+      handleCommand(command, editorDiv, value);
     });
   });
   
@@ -162,19 +147,25 @@ function initializeRichTextEditor(container, initialContent = "") {
 }
 
 // Handle toolbar commands
-function handleCommand(command, editor) {
+function handleCommand(command, editor, value = null) {
   editor.focus();
   
   switch(command) {
     case 'createLink':
       const url = prompt("Enter URL:", "https://");
-      if (url) {
+      if (url && url !== "https://") {
         document.execCommand('createLink', false, url);
       }
       break;
       
     case 'insertMath':
       showMathModal(editor);
+      break;
+      
+    case 'formatBlock':
+      if (value) {
+        document.execCommand('formatBlock', false, value);
+      }
       break;
       
     default:
@@ -189,29 +180,44 @@ function showMathModal(editor) {
   
   modal.innerHTML = `
     <div class="math-modal">
-      <h3>Insert Math (LaTeX)</h3>
-      
-      <div class="math-mode-selector">
-        <label>
-          <input type="radio" name="math-mode" value="inline" checked />
-          Inline Math: $...$
-        </label>
-        <label>
-          <input type="radio" name="math-mode" value="display" />
-          Display Math: $$...$$
-        </label>
+      <div class="math-modal-header">
+        <h3>Insert Math (LaTeX)</h3>
+        <button type="button" class="math-modal-close">&times;</button>
       </div>
       
-      <label>LaTeX Code</label>
-      <textarea id="math-latex-input" placeholder="e.g., x^2 + y^2 = r^2" rows="4"></textarea>
-      
-      <div class="math-preview" id="math-preview-area">
-        <small>Preview will appear here</small>
+      <div class="math-modal-body">
+        <div class="math-mode-selector">
+          <label class="math-mode-option">
+            <input type="radio" name="math-mode" value="inline" checked />
+            <span>Inline: <code>$...$</code></span>
+          </label>
+          <label class="math-mode-option">
+            <input type="radio" name="math-mode" value="display" />
+            <span>Display: <code>$$...$$</code></span>
+          </label>
+        </div>
+        
+        <label class="math-label">LaTeX Code</label>
+        <textarea id="math-latex-input" placeholder="e.g., x^2 + y^2 = r^2&#10;or \\frac{a}{b}" rows="4"></textarea>
+        
+        <div class="math-examples">
+          <strong>Quick examples:</strong>
+          <button type="button" class="math-example-btn" data-latex="x^2">x²</button>
+          <button type="button" class="math-example-btn" data-latex="\\frac{a}{b}">a/b</button>
+          <button type="button" class="math-example-btn" data-latex="\\sqrt{x}">√x</button>
+          <button type="button" class="math-example-btn" data-latex="\\sum_{i=1}^{n}">Σ</button>
+          <button type="button" class="math-example-btn" data-latex="\\int_{a}^{b}">∫</button>
+        </div>
+        
+        <label class="math-label">Preview</label>
+        <div class="math-preview" id="math-preview-area">
+          <small>Type LaTeX above to see preview</small>
+        </div>
       </div>
       
-      <div class="math-modal-actions">
-        <button type="button" class="btn btn-secondary" id="math-cancel-btn">Cancel</button>
-        <button type="button" class="btn" id="math-insert-btn">Insert</button>
+      <div class="math-modal-footer">
+        <button type="button" class="btn btn-secondary math-cancel-btn">Cancel</button>
+        <button type="button" class="btn math-insert-btn">Insert Math</button>
       </div>
     </div>
   `;
@@ -220,15 +226,26 @@ function showMathModal(editor) {
   
   const latexInput = modal.querySelector("#math-latex-input");
   const previewArea = modal.querySelector("#math-preview-area");
-  const cancelBtn = modal.querySelector("#math-cancel-btn");
-  const insertBtn = modal.querySelector("#math-insert-btn");
+  const closeBtn = modal.querySelector(".math-modal-close");
+  const cancelBtn = modal.querySelector(".math-cancel-btn");
+  const insertBtn = modal.querySelector(".math-insert-btn");
   const modeRadios = modal.querySelectorAll('input[name="math-mode"]');
+  const exampleBtns = modal.querySelectorAll(".math-example-btn");
   
   latexInput.focus();
   
+  // Example buttons
+  exampleBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      latexInput.value = btn.dataset.latex;
+      latexInput.dispatchEvent(new Event('input'));
+      latexInput.focus();
+    });
+  });
+  
   // Live preview
   let previewTimeout;
-  latexInput.addEventListener("input", () => {
+  function updatePreview() {
     clearTimeout(previewTimeout);
     previewTimeout = setTimeout(() => {
       const latex = latexInput.value.trim();
@@ -239,20 +256,31 @@ function showMathModal(editor) {
         
         if (window.MathJax && window.MathJax.typesetPromise) {
           window.MathJax.typesetPromise([previewArea]).catch(err => {
-            previewArea.innerHTML = '<small style="color: red;">Invalid LaTeX</small>';
+            previewArea.innerHTML = '<small style="color: #ef4444;">Invalid LaTeX syntax</small>';
           });
         }
       } else {
-        previewArea.innerHTML = '<small>Preview will appear here</small>';
+        previewArea.innerHTML = '<small>Type LaTeX above to see preview</small>';
       }
     }, 500);
-  });
+  }
+  
+  latexInput.addEventListener("input", updatePreview);
+  modeRadios.forEach(radio => radio.addEventListener("change", updatePreview));
   
   const closeModal = () => modal.remove();
   
+  closeBtn.addEventListener("click", closeModal);
   cancelBtn.addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => {
     if (e.target === modal) closeModal();
+  });
+  
+  // Handle Enter in textarea (Ctrl+Enter to insert)
+  latexInput.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key === "Enter") {
+      insertBtn.click();
+    }
   });
   
   insertBtn.addEventListener("click", () => {
@@ -265,10 +293,37 @@ function showMathModal(editor) {
     const mode = modal.querySelector('input[name="math-mode"]:checked').value;
     const mathText = mode === 'inline' ? `$${latex}$` : `$$${latex}$$`;
     
-    // Insert into editor
-    document.execCommand('insertHTML', false, `<span class="math-formula">${mathText}</span>&nbsp;`);
-    editor.focus();
+    // Insert into editor at cursor position
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      
+      const mathSpan = document.createElement('span');
+      mathSpan.className = 'math-formula';
+      mathSpan.textContent = mathText;
+      
+      range.insertNode(mathSpan);
+      
+      // Add space after
+      const space = document.createTextNode('\u00A0');
+      range.setStartAfter(mathSpan);
+      range.insertNode(space);
+      range.setStartAfter(space);
+      range.collapse(true);
+      
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      // Fallback: append to end
+      const mathSpan = document.createElement('span');
+      mathSpan.className = 'math-formula';
+      mathSpan.textContent = mathText;
+      editor.appendChild(mathSpan);
+      editor.appendChild(document.createTextNode('\u00A0'));
+    }
     
+    editor.focus();
     closeModal();
   });
 }
