@@ -1,4 +1,4 @@
-// js/problem.js
+// js/problem.js - Fixed version with proper math rendering
 import { db, doc, getDoc } from "./firebase.js";
 
 let problemData = null;
@@ -9,7 +9,7 @@ function renderBlock(block) {
   
   switch (block.type) {
     case "text":
-      // Don't escape HTML for rich text content - render as HTML
+      // Render HTML content directly (includes math formulas)
       return `<div class="block-text">${block.content || ""}</div>`;
     
     case "image":
@@ -39,6 +39,18 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Process MathJax on elements
+function processMath(elements) {
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    // Add a small delay to ensure DOM is fully rendered
+    setTimeout(() => {
+      window.MathJax.typesetPromise(elements).catch(err => {
+        console.error("MathJax error:", err);
+      });
+    }, 100);
+  }
 }
 
 // Load and display problem
@@ -115,12 +127,8 @@ async function loadProblem() {
       document.getElementById("problem-timestamp").textContent = date.toLocaleDateString();
     }
     
-    // Typeset MathJax
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise([statementContainer]).catch(err => {
-        console.error("MathJax error:", err);
-      });
-    }
+    // Process MathJax for statement
+    processMath([statementContainer]);
     
   } catch (err) {
     console.error("Error loading problem:", err);
@@ -164,12 +172,8 @@ function showSolutions() {
   solutionsContainer.style.display = "block";
   showButton.style.display = "none";
   
-  // Typeset MathJax for solutions
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    window.MathJax.typesetPromise([solutionsContainer]).catch(err => {
-      console.error("MathJax error:", err);
-    });
-  }
+  // Process MathJax for solutions
+  processMath([solutionsContainer]);
 }
 
 // Initialize
