@@ -1,4 +1,4 @@
-// js/problem.js - Fixed version with proper math rendering
+// js/problem.js
 import { db, doc, getDoc } from "./firebase.js";
 
 let problemData = null;
@@ -9,7 +9,7 @@ function renderBlock(block) {
   
   switch (block.type) {
     case "text":
-      // Render HTML content directly (includes math formulas)
+      // Don't escape HTML for rich text content - render as HTML
       return `<div class="block-text">${block.content || ""}</div>`;
     
     case "image":
@@ -39,18 +39,6 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
-}
-
-// Process MathJax on elements
-function processMath(elements) {
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    // Add a small delay to ensure DOM is fully rendered
-    setTimeout(() => {
-      window.MathJax.typesetPromise(elements).catch(err => {
-        console.error("MathJax error:", err);
-      });
-    }, 100);
-  }
 }
 
 // Load and display problem
@@ -106,6 +94,15 @@ async function loadProblem() {
       statementContainer.innerHTML = "<p><em>No statement available</em></p>";
     }
     
+    // Typeset MathJax for statement AFTER inserting content
+    setTimeout(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([statementContainer]).catch(err => {
+          console.error("MathJax error:", err);
+        });
+      }
+    }, 200);
+    
     // Render related lessons
     if (problemData.lessons && problemData.lessons.length > 0) {
       document.getElementById("lessons-section").style.display = "block";
@@ -126,9 +123,6 @@ async function loadProblem() {
       const date = problemData.timestamp.toDate ? problemData.timestamp.toDate() : new Date(problemData.timestamp);
       document.getElementById("problem-timestamp").textContent = date.toLocaleDateString();
     }
-    
-    // Process MathJax for statement
-    processMath([statementContainer]);
     
   } catch (err) {
     console.error("Error loading problem:", err);
@@ -172,8 +166,12 @@ function showSolutions() {
   solutionsContainer.style.display = "block";
   showButton.style.display = "none";
   
-  // Process MathJax for solutions
-  processMath([solutionsContainer]);
+  // Typeset MathJax for solutions
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise([solutionsContainer]).catch(err => {
+      console.error("MathJax error:", err);
+    });
+  }
 }
 
 // Initialize
