@@ -1,4 +1,4 @@
-// js/admin-problems.js - Fixed version with math rendering
+// js/admin-problems.js
 import {
   db,
   collection,
@@ -59,19 +59,14 @@ function renderProblems() {
     problemsList.appendChild(card);
   });
   
-  // Process MathJax after rendering all cards
-  processMath([problemsList]);
-}
-
-// Process MathJax on elements
-function processMath(elements) {
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    setTimeout(() => {
-      window.MathJax.typesetPromise(elements).catch(err => {
+  // Typeset MathJax for problem previews
+  setTimeout(() => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([problemsList]).catch(err => {
         console.error("MathJax error:", err);
       });
-    }, 100);
-  }
+    }
+  }, 200);
 }
 
 // Create problem card
@@ -116,7 +111,7 @@ function createProblemCard(problem) {
   return card;
 }
 
-// Get statement preview with math support
+// Get statement preview
 function getStatementPreview(statement = []) {
   if (!statement || statement.length === 0) {
     return "<p><em>No statement available</em></p>";
@@ -127,20 +122,19 @@ function getStatementPreview(statement = []) {
   if (firstTextBlock) {
     const content = firstTextBlock.content || "";
     
-    // For preview, we want to show some content but not full HTML rendering
-    // Extract text but preserve basic math markers for display
+    // For admin preview, check length and decide rendering approach
     const temp = document.createElement('div');
     temp.innerHTML = content;
+    const textOnly = temp.textContent || temp.innerText || "";
     
-    // Get text content but preserve some structure
-    let textOnly = temp.textContent || temp.innerText || "";
-    
-    // Truncate to 200 chars
-    const truncated = textOnly.length > 200 ? textOnly.substring(0, 200) + "..." : textOnly;
-    
-    // Return as text that can still show math formulas
-    // We keep it simple for admin preview
-    return `<p>${escapeHtml(truncated)}</p>`;
+    if (textOnly.length > 200) {
+      // Long content - show truncated plain text
+      const truncated = textOnly.substring(0, 200) + "...";
+      return `<p>${escapeHtml(truncated)}</p>`;
+    } else {
+      // Short content - show with math rendering
+      return `<div class="preview-math">${content}</div>`;
+    }
   }
   
   return "<p><em>View problem for details</em></p>";
