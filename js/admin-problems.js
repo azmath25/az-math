@@ -45,6 +45,20 @@ async function loadProblems() {
   }
 }
 
+// Typeset MathJax when DOM is ready
+function typesetMath(container) {
+  // Use requestAnimationFrame to ensure DOM is fully rendered
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([container]).catch(err => {
+          console.error("MathJax error:", err);
+        });
+      }
+    });
+  });
+}
+
 // Render problems
 function renderProblems() {
   if (filteredProblems.length === 0) {
@@ -59,14 +73,8 @@ function renderProblems() {
     problemsList.appendChild(card);
   });
   
-  // Typeset MathJax for problem previews
-  setTimeout(() => {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise([problemsList]).catch(err => {
-        console.error("MathJax error:", err);
-      });
-    }
-  }, 200);
+  // Typeset MathJax for problem previews after DOM is ready
+  typesetMath(problemsList);
 }
 
 // Create problem card
@@ -111,7 +119,7 @@ function createProblemCard(problem) {
   return card;
 }
 
-// Get statement preview
+// Get statement preview with smart handling for math
 function getStatementPreview(statement = []) {
   if (!statement || statement.length === 0) {
     return "<p><em>No statement available</em></p>";
@@ -122,17 +130,17 @@ function getStatementPreview(statement = []) {
   if (firstTextBlock) {
     const content = firstTextBlock.content || "";
     
-    // For admin preview, check length and decide rendering approach
+    // Check content length by plain text
     const temp = document.createElement('div');
     temp.innerHTML = content;
     const textOnly = temp.textContent || temp.innerText || "";
     
-    if (textOnly.length > 200) {
-      // Long content - show truncated plain text
-      const truncated = textOnly.substring(0, 200) + "...";
+    if (textOnly.length > 250) {
+      // Long content - show truncated plain text (strip math for preview)
+      const truncated = textOnly.substring(0, 250) + "...";
       return `<p>${escapeHtml(truncated)}</p>`;
     } else {
-      // Short content - show with math rendering
+      // Short content - show with full HTML and math rendering
       return `<div class="preview-math">${content}</div>`;
     }
   }
