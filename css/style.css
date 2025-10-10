@@ -3256,6 +3256,15 @@ form textarea {
   background: #cbd5e1;
   border-radius: 4px;
 }
+.math-formula {
+  background-color: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Times New Roman', serif;
+  margin: 0 2px;
+  display: inline-block;
+  user-select: none;
+}
 
 .rte-editor::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
