@@ -41,6 +41,20 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Typeset MathJax when DOM is ready
+function typesetMath(container) {
+  // Use requestAnimationFrame to ensure DOM is fully rendered
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([container]).catch(err => {
+          console.error("MathJax error:", err);
+        });
+      }
+    });
+  });
+}
+
 // Load and display problem
 async function loadProblem() {
   const params = new URLSearchParams(window.location.search);
@@ -94,14 +108,8 @@ async function loadProblem() {
       statementContainer.innerHTML = "<p><em>No statement available</em></p>";
     }
     
-    // Typeset MathJax for statement AFTER inserting content
-    setTimeout(() => {
-      if (window.MathJax && window.MathJax.typesetPromise) {
-        window.MathJax.typesetPromise([statementContainer]).catch(err => {
-          console.error("MathJax error:", err);
-        });
-      }
-    }, 200);
+    // Typeset MathJax for statement AFTER DOM is ready
+    typesetMath(statementContainer);
     
     // Render related lessons
     if (problemData.lessons && problemData.lessons.length > 0) {
@@ -167,11 +175,7 @@ function showSolutions() {
   showButton.style.display = "none";
   
   // Typeset MathJax for solutions
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    window.MathJax.typesetPromise([solutionsContainer]).catch(err => {
-      console.error("MathJax error:", err);
-    });
-  }
+  typesetMath(solutionsContainer);
 }
 
 // Initialize
