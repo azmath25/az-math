@@ -1,4 +1,4 @@
-// js/admin-problems.js
+// js/admin-problems.js - Fixed version with math rendering
 import {
   db,
   collection,
@@ -58,6 +58,20 @@ function renderProblems() {
     const card = createProblemCard(problem);
     problemsList.appendChild(card);
   });
+  
+  // Process MathJax after rendering all cards
+  processMath([problemsList]);
+}
+
+// Process MathJax on elements
+function processMath(elements) {
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    setTimeout(() => {
+      window.MathJax.typesetPromise(elements).catch(err => {
+        console.error("MathJax error:", err);
+      });
+    }, 100);
+  }
 }
 
 // Create problem card
@@ -102,7 +116,7 @@ function createProblemCard(problem) {
   return card;
 }
 
-// Get statement preview
+// Get statement preview with math support
 function getStatementPreview(statement = []) {
   if (!statement || statement.length === 0) {
     return "<p><em>No statement available</em></p>";
@@ -113,14 +127,19 @@ function getStatementPreview(statement = []) {
   if (firstTextBlock) {
     const content = firstTextBlock.content || "";
     
-    // Strip HTML tags and decode entities for preview
+    // For preview, we want to show some content but not full HTML rendering
+    // Extract text but preserve basic math markers for display
     const temp = document.createElement('div');
     temp.innerHTML = content;
-    const textOnly = temp.textContent || temp.innerText || "";
     
-    // Truncate to 200 chars (admin has shorter preview)
+    // Get text content but preserve some structure
+    let textOnly = temp.textContent || temp.innerText || "";
+    
+    // Truncate to 200 chars
     const truncated = textOnly.length > 200 ? textOnly.substring(0, 200) + "..." : textOnly;
     
+    // Return as text that can still show math formulas
+    // We keep it simple for admin preview
     return `<p>${escapeHtml(truncated)}</p>`;
   }
   
