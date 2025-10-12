@@ -5,13 +5,65 @@ import {
   getDoc
 } from "./firebase.js";
 
+// Clean HTML but preserve formatting and fix math delimiters
+function cleanHtmlForMath(html) {
+  if (!html) return "";
+  
+  // Create a temporary element to parse HTML
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  
+  // List of allowed formatting tags to preserve
+  const allowedTags = ['strong', 'b', 'em', 'i', 'u', 'br', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+  
+  // Recursively clean the HTML
+  function cleanNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent;
+    }
+    
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = node.tagName.toLowerCase();
+      
+      // Process child nodes
+      let childrenHtml = '';
+      for (let child of node.childNodes) {
+        childrenHtml += cleanNode(child);
+      }
+      
+      // Keep allowed formatting tags
+      if (allowedTags.includes(tagName)) {
+        return `<${tagName}>${childrenHtml}</${tagName}>`;
+      }
+      
+      // For other tags (like span), just return the content without the tag
+      return childrenHtml;
+    }
+    
+    return '';
+  }
+  
+  const cleaned = cleanNode(temp);
+  
+  // Fix any double spaces or excessive whitespace
+  return cleaned.replace(/\s+/g, ' ').trim();
+}
+
+// Escape HTML (only for URLs and safe content)
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // Render a single block
 function renderBlock(block) {
   if (!block) return "";
   
   switch (block.type) {
     case "text":
-      return `<div class="block-text">${escapeHtml(block.content || "")}</div>`;
+      const content = cleanHtmlForMath(block.content || "");
+      return `<div class="block-text">${content}</div>`;
     
     case "image":
       return `<div class="block-image">
@@ -107,7 +159,8 @@ function renderProblemStatement(statement = []) {
   let html = "";
   for (const block of statement) {
     if (block.type === "text") {
-      html += `<p>${escapeHtml(block.content || "")}</p>`;
+      const content = cleanHtmlForMath(block.content || "");
+      html += `<p>${content}</p>`;
     } else if (block.type === "image") {
       html += `<img src="${escapeHtml(block.url || "")}" style="max-width:100%; border-radius: 8px; margin: 1rem 0;" />`;
     }
@@ -142,7 +195,8 @@ function renderSolutionBlocks(blocks = []) {
   
   blocks.forEach(block => {
     if (block.type === "text") {
-      html += `<p>${escapeHtml(block.content || "")}</p>`;
+      const content = cleanHtmlForMath(block.content || "");
+      html += `<p>${content}</p>`;
     } else if (block.type === "image") {
       html += `<img src="${escapeHtml(block.url || "")}" style="max-width:100%; border-radius: 8px; margin: 1rem 0;" />`;
     }
@@ -151,11 +205,15 @@ function renderSolutionBlocks(blocks = []) {
   return html || "<p><em>No solution content</em></p>";
 }
 
-// Escape HTML
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
+// Typeset MathJax - CSP compliant
+function typesetMath(container) {
+  if (!container) return;
+  
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise([container]).catch(err => {
+      console.error("MathJax error:", err);
+    });
+  }
 }
 
 // Load and display lesson
@@ -229,6 +287,13 @@ async function loadLesson() {
       
       // Attach event listeners to toggle buttons
       attachSolutionToggleListeners();
+      
+      // Typeset MathJax after all content is loaded
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          typesetMath(contentContainer);
+        });
+      });
     } else {
       contentContainer.innerHTML = "<p><em>No content available</em></p>";
     }
@@ -254,13 +319,6 @@ async function loadLesson() {
       document.getElementById("lesson-timestamp").textContent = date.toLocaleDateString();
     }
     
-    // Typeset MathJax
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise([contentContainer]).catch(err => {
-        console.error("MathJax error:", err);
-      });
-    }
-    
   } catch (err) {
     console.error("Error loading lesson:", err);
     document.getElementById("lesson-title").textContent = "Error loading lesson";
@@ -282,12 +340,12 @@ function attachSolutionToggleListeners() {
         solutionsContainer.style.display = "block";
         btn.textContent = "🙈 Hide Solution" + (btn.textContent.includes('s') ? 's' : '');
         
-        // Typeset MathJax for solutions
-        if (window.MathJax && window.MathJax.typesetPromise) {
-          window.MathJax.typesetPromise([solutionsContainer]).catch(err => {
-            console.error("MathJax error:", err);
+        // Typeset MathJax for solutions using requestAnimationFrame (CSP compliant)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            typesetMath(solutionsContainer);
           });
-        }
+        });
       } else {
         solutionsContainer.style.display = "none";
         btn.textContent = "👁️ Show Solution" + (btn.textContent.includes('s') ? 's' : '');
