@@ -43,16 +43,28 @@ function escapeHtml(text) {
 
 // Typeset MathJax when DOM is ready
 function typesetMath(container) {
-  // Use requestAnimationFrame to ensure DOM is fully rendered
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (window.MathJax && window.MathJax.typesetPromise) {
-        window.MathJax.typesetPromise([container]).catch(err => {
-          console.error("MathJax error:", err);
-        });
-      }
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise([container]).catch(err => {
+      console.error("MathJax error:", err);
     });
-  });
+  }
+}
+
+// Render problem statement
+function renderStatement() {
+  const statementContainer = document.getElementById("problem-statement");
+  statementContainer.innerHTML = "";
+  
+  if (problemData.statement && problemData.statement.length > 0) {
+    problemData.statement.forEach(block => {
+      statementContainer.insertAdjacentHTML("beforeend", renderBlock(block));
+    });
+    
+    // Typeset MathJax after rendering
+    typesetMath(statementContainer);
+  } else {
+    statementContainer.innerHTML = "<p><em>No statement available</em></p>";
+  }
 }
 
 // Load and display problem
@@ -96,20 +108,10 @@ async function loadProblem() {
       });
     }
     
-    // Render statement
-    const statementContainer = document.getElementById("problem-statement");
-    statementContainer.innerHTML = "";
-    
-    if (problemData.statement && problemData.statement.length > 0) {
-      problemData.statement.forEach(block => {
-        statementContainer.insertAdjacentHTML("beforeend", renderBlock(block));
-      });
-    } else {
-      statementContainer.innerHTML = "<p><em>No statement available</em></p>";
-    }
-    
-    // Typeset MathJax for statement AFTER DOM is ready
-    typesetMath(statementContainer);
+    // Render statement after a brief delay to ensure MathJax is ready
+    setTimeout(() => {
+      renderStatement();
+    }, 0);
     
     // Render related lessons
     if (problemData.lessons && problemData.lessons.length > 0) {
