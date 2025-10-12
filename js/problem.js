@@ -4,14 +4,59 @@ import { db, doc, getDoc } from "./firebase.js";
 let problemData = null;
 let solutionsVisible = false;
 
+// Clean HTML but preserve formatting and fix math delimiters
+function cleanHtmlForMath(html) {
+  if (!html) return "";
+  
+  // Create a temporary element to parse HTML
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  
+  // List of allowed formatting tags to preserve
+  const allowedTags = ['strong', 'b', 'em', 'i', 'u', 'br', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+  
+  // Recursively clean the HTML
+  function cleanNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent;
+    }
+    
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = node.tagName.toLowerCase();
+      
+      // Process child nodes
+      let childrenHtml = '';
+      for (let child of node.childNodes) {
+        childrenHtml += cleanNode(child);
+      }
+      
+      // Keep allowed formatting tags
+      if (allowedTags.includes(tagName)) {
+        return `<${tagName}>${childrenHtml}</${tagName}>`;
+      }
+      
+      // For other tags (like span), just return the content without the tag
+      return childrenHtml;
+    }
+    
+    return '';
+  }
+  
+  const cleaned = cleanNode(temp);
+  
+  // Fix any double spaces or excessive whitespace
+  return cleaned.replace(/\s+/g, ' ').trim();
+}
+
 // Render a content block
 function renderBlock(block) {
   if (!block) return "";
   
   switch (block.type) {
     case "text":
-      // Don't escape HTML for rich text content - render as HTML
-      return `<div class="block-text">${block.content || ""}</div>`;
+      // Clean HTML and preserve math notation
+      const content = cleanHtmlForMath(block.content || "");
+      return `<div class="block-text">${content}</div>`;
     
     case "image":
       return `<div class="block-image">
