@@ -42,70 +42,84 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Enhanced typeset function with debugging
-function typesetMath(container, label = "unknown") {
-  console.log(`[MathJax Debug] Attempting to typeset: ${label}`);
-  console.log(`[MathJax Debug] Container exists:`, !!container);
-  console.log(`[MathJax Debug] Container innerHTML length:`, container?.innerHTML?.length);
-  console.log(`[MathJax Debug] MathJax available:`, !!window.MathJax);
-  console.log(`[MathJax Debug] typesetPromise available:`, !!window.MathJax?.typesetPromise);
-  
-  if (!window.MathJax) {
-    console.error(`[MathJax Debug] MathJax not loaded yet for ${label}`);
-    // Retry after MathJax loads
-    setTimeout(() => typesetMath(container, label), 500);
+// Typeset MathJax - CSP compliant version
+function typesetMath(container) {
+  if (!container) {
+    console.warn("typesetMath called with no container");
     return;
   }
   
-  if (window.MathJax.typesetPromise) {
-    console.log(`[MathJax Debug] Calling typesetPromise for ${label}...`);
-    window.MathJax.typesetPromise([container])
-      .then(() => {
-        console.log(`[MathJax Debug] ✓ Successfully typeset ${label}`);
-      })
-      .catch(err => {
-        console.error(`[MathJax Debug] ✗ Error typesetting ${label}:`, err);
-      });
+  // Use Promise-based approach that's CSP compliant
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise([container]).catch(err => {
+      console.error("MathJax error:", err);
+    });
+  } else if (window.MathJax && window.MathJax.typeset) {
+    // Fallback to synchronous typeset
+    window.MathJax.typeset([container]);
+  } else {
+    console.warn("MathJax not available yet");
   }
 }
 
-// Render problem statement
+// Render problem statement with MathJax
 function renderStatement() {
-  console.log("[Debug] renderStatement called");
   const statementContainer = document.getElementById("problem-statement");
   
   if (!statementContainer) {
-    console.error("[Debug] Statement container not found!");
+    console.error("Statement container not found!");
     return;
   }
   
   statementContainer.innerHTML = "";
   
   if (problemData.statement && problemData.statement.length > 0) {
-    console.log(`[Debug] Rendering ${problemData.statement.length} statement blocks`);
-    
-    problemData.statement.forEach((block, idx) => {
-      console.log(`[Debug] Block ${idx}:`, block.type, block.content?.substring(0, 50));
-      const html = renderBlock(block);
-      statementContainer.insertAdjacentHTML("beforeend", html);
+    problemData.statement.forEach(block => {
+      statementContainer.insertAdjacentHTML("beforeend", renderBlock(block));
     });
     
-    console.log("[Debug] Statement HTML inserted, length:", statementContainer.innerHTML.length);
-    console.log("[Debug] First 200 chars:", statementContainer.innerHTML.substring(0, 200));
-    
-    // Wait for next tick, then typeset
-    setTimeout(() => {
-      console.log("[Debug] setTimeout fired, calling typesetMath");
-      typesetMath(statementContainer, "problem-statement");
-    }, 100);
+    // Use requestAnimationFrame instead of setTimeout (CSP compliant)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        typesetMath(statementContainer);
+      });
+    });
   } else {
     statementContainer.innerHTML = "<p><em>No statement available</em></p>";
   }
 }
 
+// Wait for MathJax using Promises (CSP compliant)
+function waitForMathJax() {
+  return new Promise((resolve) => {
+    if (window.MathJax && (window.MathJax.typesetPromise || window.MathJax.typeset)) {
+      resolve();
+      return;
+    }
+    
+    // Poll for MathJax using requestAnimationFrame (CSP compliant)
+    let attempts = 0;
+    const maxAttempts = 100; // 100 frames ~ 1.7 seconds at 60fps
+    
+    function checkMathJax() {
+      attempts++;
+      
+      if (window.MathJax && (window.MathJax.typesetPromise || window.MathJax.typeset)) {
+        resolve();
+      } else if (attempts < maxAttempts) {
+        requestAnimationFrame(checkMathJax);
+      } else {
+        console.warn("MathJax not loaded after waiting");
+        resolve(); // Resolve anyway to show content
+      }
+    }
+    
+    requestAnimationFrame(checkMathJax);
+  });
+}
+
 // Load and display problem
 async function loadProblem() {
-  console.log("[Debug] loadProblem called");
   const params = new URLSearchParams(window.location.search);
   const problemId = params.get("id");
   
@@ -114,8 +128,6 @@ async function loadProblem() {
     document.getElementById("problem-statement").innerHTML = "<p>No problem ID provided.</p>";
     return;
   }
-  
-  console.log("[Debug] Loading problem ID:", problemId);
   
   try {
     const problemDoc = await getDoc(doc(db, "problems", String(problemId)));
@@ -127,7 +139,6 @@ async function loadProblem() {
     }
     
     problemData = problemDoc.data();
-    console.log("[Debug] Problem data loaded:", problemData);
     
     // Render header
     const title = problemData.title || `Problem #${problemData.id}`;
@@ -148,12 +159,9 @@ async function loadProblem() {
       });
     }
     
-    // Wait for MathJax to be fully loaded before rendering statement
-    console.log("[Debug] Waiting for MathJax to be ready...");
-    waitForMathJax(() => {
-      console.log("[Debug] MathJax ready, rendering statement");
-      renderStatement();
-    });
+    // Wait for MathJax, then render statement
+    await waitForMathJax();
+    renderStatement();
     
     // Render related lessons
     if (problemData.lessons && problemData.lessons.length > 0) {
@@ -177,38 +185,16 @@ async function loadProblem() {
     }
     
   } catch (err) {
-    console.error("[Debug] Error loading problem:", err);
+    console.error("Error loading problem:", err);
     document.getElementById("problem-title").textContent = "Error loading problem";
     document.getElementById("problem-statement").innerHTML = "<p>An error occurred. Please try again.</p>";
   }
 }
 
-// Wait for MathJax to be fully loaded
-function waitForMathJax(callback, maxAttempts = 20) {
-  let attempts = 0;
-  
-  const checkMathJax = () => {
-    attempts++;
-    console.log(`[Debug] Checking for MathJax (attempt ${attempts})...`);
-    
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      console.log("[Debug] MathJax is ready!");
-      callback();
-    } else if (attempts < maxAttempts) {
-      setTimeout(checkMathJax, 100);
-    } else {
-      console.error("[Debug] MathJax failed to load after", maxAttempts, "attempts");
-      callback(); // Call anyway to show content
-    }
-  };
-  
-  checkMathJax();
-}
-
 // Toggle solutions visibility
 function toggleSolutions() {
   const solutionsContainer = document.getElementById("solutions-container");
-  const toggleButton = document.getElementById("toggle-solutions");
+  const toggleButton = document.getElementById("toggle-solutions") || document.getElementById("show-solutions");
   
   if (!solutionsVisible) {
     // Show solutions
@@ -239,27 +225,31 @@ function toggleSolutions() {
     });
     
     solutionsContainer.style.display = "block";
-    toggleButton.textContent = "🙈 Hide Solutions";
+    if (toggleButton) {
+      toggleButton.textContent = "🙈 Hide Solutions";
+    }
     solutionsVisible = true;
     
-    // Typeset MathJax for solutions
-    typesetMath(solutionsContainer, "solutions");
+    // Typeset MathJax for solutions using requestAnimationFrame
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        typesetMath(solutionsContainer);
+      });
+    });
   } else {
     // Hide solutions
     solutionsContainer.style.display = "none";
-    toggleButton.textContent = "👁️ Show Solutions";
+    if (toggleButton) {
+      toggleButton.textContent = "👁️ Show Solutions";
+    }
     solutionsVisible = false;
   }
 }
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[Debug] DOM Content Loaded");
-  console.log("[Debug] MathJax status:", window.MathJax ? "loaded" : "not loaded");
-  
   loadProblem();
   
-  // Use either "show-solutions" (old ID) or "toggle-solutions" (new ID)
   const toggleSolutionsBtn = document.getElementById("toggle-solutions") || document.getElementById("show-solutions");
   if (toggleSolutionsBtn) {
     toggleSolutionsBtn.addEventListener("click", toggleSolutions);
