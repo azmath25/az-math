@@ -271,7 +271,7 @@ function toggleSolutions() {
     
     solutionsContainer.style.display = "block";
     if (toggleButton) {
-      toggleButton.textContent = "🙈 Hide Solutions";
+      toggleButton.textContent = "Hide Solutions";
     }
     solutionsVisible = true;
     
