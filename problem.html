@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Problem - Az-Math</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/problem-page.css" />
   
   <!-- MathJax Configuration -->
   <script>
@@ -47,48 +48,51 @@
 
   <div id="menu"></div>
 
-  <main class="content">
-    <div class="problem-detail">
-      <!-- Problem Header -->
-      <div class="problem-detail-header">
+  <main class="content problem-page-content">
+    <div class="problem-detail problem-detail-compact">
+      <!-- Compact Header -->
+      <div class="problem-detail-header problem-header-compact">
         <h1 id="problem-title">Loading...</h1>
-        <div class="problem-meta">
-          <span id="problem-id" class="meta-item"></span>
-          <span id="problem-category" class="meta-item"></span>
-          <span id="problem-difficulty" class="meta-item"></span>
+        <div class="problem-meta-compact">
+          <span id="problem-id" class="meta-item-compact"></span>
+          <span id="problem-category" class="meta-item-compact"></span>
+          <span id="problem-difficulty" class="meta-item-compact"></span>
         </div>
-        <div id="problem-tags" class="problem-tags"></div>
+        <div id="problem-tags" class="problem-tags problem-tags-compact"></div>
       </div>
 
       <!-- Problem Statement -->
-      <div class="section">
-        <h2>Problem Statement</h2>
-        <div id="problem-statement" class="content-blocks"></div>
+      <div class="section section-compact">
+        <h2 class="section-title-compact">Problem Statement</h2>
+        <div id="problem-statement" class="content-blocks content-blocks-compact"></div>
       </div>
 
       <!-- Solutions -->
-      <div class="section">
-        <h2>Solutions</h2>
-        <button id="toggle-solutions" class="btn">👁️ Show Solutions</button>
-        <div id="solutions-container" style="display:none;"></div>
+      <div class="section section-compact">
+        <div class="section-header-inline">
+          <h2 class="section-title-compact">Solutions</h2>
+          <button id="toggle-solutions" class="btn btn-small btn-toggle">👁️ Show</button>
+        </div>
+        <div id="solutions-container" style="display:none;" class="solutions-compact"></div>
       </div>
 
       <!-- Related Lessons -->
-      <div class="section" id="lessons-section" style="display:none;">
-        <h2>Related Lessons</h2>
-        <ul id="lesson-list" class="ref-list"></ul>
+      <div class="section section-compact" id="lessons-section" style="display:none;">
+        <h2 class="section-title-compact">Related Lessons</h2>
+        <ul id="lesson-list" class="ref-list ref-list-compact"></ul>
       </div>
 
-      <!-- Metadata -->
-      <div class="section metadata-section">
-        <h3>Metadata</h3>
-        <p><strong>Author:</strong> <span id="problem-author">Unknown</span></p>
-        <p><strong>Created:</strong> <span id="problem-timestamp">Unknown</span></p>
-      </div>
-
-      <!-- Back Button -->
-      <div class="section">
-        <a href="problems.html" class="btn btn-secondary">← Back to Problems</a>
+      <!-- Compact Footer Metadata -->
+      <div class="problem-footer-meta">
+        <span class="footer-meta-item">
+          <span class="meta-icon">✍️</span>
+          <span id="problem-author">Unknown</span>
+        </span>
+        <span class="footer-meta-item">
+          <span class="meta-icon">📅</span>
+          <span id="problem-timestamp">Unknown</span>
+        </span>
+        <a href="problems.html" class="btn btn-small btn-secondary">← Back</a>
       </div>
     </div>
   </main>
