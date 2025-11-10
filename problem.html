@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Problem - Az-Math</title>
-  <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="css/problem-page.css" />
+  <link rel="stylesheet" href="css/minimal-style.css" />
+  <link rel="stylesheet" href="css/problem-page-compact.css" />
   
   <!-- MathJax Configuration -->
   <script>
@@ -16,7 +16,15 @@
         processEscapes: true
       },
       svg: {
-        fontCache: 'global'
+        fontCache: 'global',
+        scale: 0.95
+      },
+      options: {
+        menuOptions: {
+          settings: {
+            zoom: 'NoZoom'
+          }
+        }
       }
     };
   </script>
@@ -39,36 +47,38 @@
 
   <nav class="sidebar" id="sidebar">
     <ul>
-      <li><a href="index.html">🏠 Home</a></li>
-      <li><a href="problems.html">📝 Problems</a></li>
-      <li><a href="lessons.html">📚 Lessons</a></li>
-      <li><a href="profile.html">👤 Profile</a></li>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="problems.html">Problems</a></li>
+      <li><a href="lessons.html">Lessons</a></li>
+      <li><a href="profile.html">Profile</a></li>
     </ul>
   </nav>
 
   <div id="menu"></div>
 
   <main class="content problem-page-content">
-    <div class="problem-detail problem-detail-compact">
+    <div class="problem-detail-compact">
       <!-- Compact Header -->
-      <div class="problem-detail-header problem-header-compact">
+      <div class="problem-header-compact">
         <h1 id="problem-title">Loading...</h1>
         <div class="problem-meta-compact">
-          <span id="problem-id" class="meta-item-compact"></span>
-          <span id="problem-category" class="meta-item-compact"></span>
-          <span id="problem-difficulty" class="meta-item-compact"></span>
+          <span id="problem-id" class="meta-item-compact">#...</span>
+          <span id="problem-category" class="meta-item-compact">Loading</span>
+          <span id="problem-difficulty" class="meta-item-compact">...</span>
         </div>
-        <div id="problem-tags" class="problem-tags problem-tags-compact"></div>
+        <div id="problem-tags" class="problem-tags-compact"></div>
       </div>
 
       <!-- Problem Statement -->
-      <div class="section section-compact">
+      <div class="section-compact">
         <h2 class="section-title-compact">Problem Statement</h2>
-        <div id="problem-statement" class="content-blocks content-blocks-compact"></div>
+        <div id="problem-statement" class="content-blocks-compact">
+          <p>Loading problem...</p>
+        </div>
       </div>
 
       <!-- Solutions -->
-      <div class="section section-compact">
+      <div class="section-compact">
         <div class="section-header-inline">
           <h2 class="section-title-compact">Solutions</h2>
           <button id="toggle-solutions" class="btn btn-small btn-toggle">👁️ Show</button>
@@ -77,24 +87,44 @@
       </div>
 
       <!-- Related Lessons -->
-      <div class="section section-compact" id="lessons-section" style="display:none;">
+      <div class="section-compact" id="lessons-section" style="display:none;">
         <h2 class="section-title-compact">Related Lessons</h2>
-        <ul id="lesson-list" class="ref-list ref-list-compact"></ul>
+        <ul id="lesson-list" class="ref-list-compact"></ul>
       </div>
 
       <!-- Compact Footer Metadata -->
       <div class="problem-footer-meta">
-        <span class="footer-meta-item">
-          <span class="meta-icon">✍️</span>
-          <span id="problem-author">Unknown</span>
-        </span>
-        <span class="footer-meta-item">
-          <span class="meta-icon">📅</span>
-          <span id="problem-timestamp">Unknown</span>
-        </span>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <span class="footer-meta-item">
+            <span class="meta-icon">✍️</span>
+            <span id="problem-author">Unknown</span>
+          </span>
+          <span class="footer-meta-item">
+            <span class="meta-icon">📅</span>
+            <span id="problem-timestamp">Unknown</span>
+          </span>
+        </div>
         <a href="problems.html" class="btn btn-small btn-secondary">← Back</a>
       </div>
     </div>
   </main>
+
+  <script>
+    // Menu toggle
+    document.getElementById('menu-toggle')?.addEventListener('click', () => {
+      document.getElementById('sidebar')?.classList.toggle('open');
+    });
+
+    // Close sidebar when clicking outside
+    document.addEventListener('click', (e) => {
+      const sidebar = document.getElementById('sidebar');
+      const menuToggle = document.getElementById('menu-toggle');
+      if (sidebar?.classList.contains('open') && 
+          !sidebar.contains(e.target) && 
+          !menuToggle?.contains(e.target)) {
+        sidebar.classList.remove('open');
+      }
+    });
+  </script>
 </body>
 </html>
