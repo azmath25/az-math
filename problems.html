@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Problems - Az-Math</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/minimal-style.css">
   
   <!-- MathJax Configuration -->
   <script>
@@ -15,35 +15,104 @@
         processEscapes: true
       },
       svg: {
-        fontCache: 'global'
+        fontCache: 'global',
+        scale: 0.95  // Slightly smaller for better fit
+      },
+      options: {
+        menuOptions: {
+          settings: {
+            zoom: 'NoZoom'  // Prevent zoom that breaks layout
+          }
+        }
       }
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+  
+  <!-- Math scaling for mobile devices -->
+  <style>
+    /* Mobile-specific math scaling */
+    @media (max-width: 640px) {
+      .MathJax {
+        font-size: 0.85em !important;
+      }
+      
+      /* Ensure math content wraps and doesn't overflow */
+      .problem-body mjx-container {
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        display: block;
+      }
+      
+      /* Compact problem cards on mobile */
+      .problem-card-wide {
+        padding: 10px;
+        font-size: 0.9rem;
+      }
+      
+      .problem-body {
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      
+      /* Make tags smaller on mobile */
+      .tag {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+      }
+    }
+    
+    /* Very small devices (< 400px) */
+    @media (max-width: 400px) {
+      .MathJax {
+        font-size: 0.75em !important;
+      }
+      
+      .problem-card-wide {
+        padding: 8px;
+        font-size: 0.85rem;
+      }
+      
+      .problem-body {
+        font-size: 0.85rem;
+      }
+    }
+    
+    /* Horizontal scroll for long equations */
+    mjx-container[display="true"] {
+      overflow-x: auto;
+      overflow-y: hidden;
+      max-width: 100%;
+    }
+  </style>
   
   <script type="module" src="js/main.js" defer></script>
   <script type="module" src="js/menu.js" defer></script>
   <script type="module" src="js/problems.js" defer></script>
 </head>
 <body>
+  <!-- Navbar -->
   <header class="navbar">
     <div class="nav-left">
       <button class="hamburger" id="menu-toggle">☰</button>
       <span class="site-title">Az-Math</span>
     </div>
     <div class="nav-right">
-      <img src="assets/img/defaultprofile.png" class="profile-icon" id="profile-photo">
+      <img src="assets/img/defaultprofile.png" alt="Profile" class="profile-icon" id="profile-photo">
     </div>
   </header>
 
+  <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
     <ul>
-      <li><a href="index.html">🏠 Home</a></li>
-      <li><a href="lessons.html">📚 Lessons</a></li>
-      <li><a href="profile.html">👤 Profile</a></li>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="lessons.html">Lessons</a></li>
+      <li><a href="profile.html">Profile</a></li>
     </ul>
   </nav>
 
+  <!-- Dynamic Menu -->
   <div id="menu"></div>
 
   <main class="content">
@@ -51,7 +120,7 @@
     
     <!-- Search and Filters -->
     <div class="search-container">
-      <input type="text" id="search-input" placeholder="Search problems by title, tags, or content..." />
+      <input type="text" id="search-input" placeholder="Search problems by title, tags, or content...">
       
       <div class="filters">
         <select id="category-filter">
@@ -72,7 +141,30 @@
     </div>
 
     <!-- Problems List -->
-    <div id="problems-list" class="problems-wide-list"></div>
+    <div id="problems-list" class="problems-wide-list">
+      <!-- Problems will be loaded by JS -->
+      <!-- Example structure for reference: -->
+      <!--
+      <div class="problem-card-wide">
+        <div class="problem-header">
+          <span class="problem-id">#1</span>
+          <span class="problem-category">Algebra</span>
+          <span class="problem-difficulty difficulty-easy">Easy</span>
+        </div>
+        <h3>Find the value of x</h3>
+        <div class="problem-tags">
+          <span class="tag">equations</span>
+          <span class="tag">linear</span>
+        </div>
+        <div class="problem-body">
+          <p>Solve for x: $2x + 5 = 13$</p>
+        </div>
+        <div style="text-align: right; margin-top: 12px;">
+          <a href="problem.html?id=1" class="btn btn-small">View Problem</a>
+        </div>
+      </div>
+      -->
+    </div>
     
     <!-- Pagination -->
     <div class="pagination">
