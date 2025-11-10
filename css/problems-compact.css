@@ -12,6 +12,17 @@
   border: 1px solid #e0e0e0;
   border-left: 3px solid #0066cc;
   padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+
+.problem-card-compact:hover {
+  border-left-color: #0052a3;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateX(2px);
 }
 
 /* Line 1: ID + Title combined */
@@ -88,10 +99,9 @@
   margin-bottom: 8px;
 }
 
-/* Footer actions */
+/* Footer actions - HIDDEN, card is clickable */
 .problem-footer {
-  text-align: right;
-  margin-top: 12px;
+  display: none;
 }
 
 /* ===== Pagination ===== */
