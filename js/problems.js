@@ -79,35 +79,32 @@ function renderProblems() {
   }
 }
 
-// Create problem card with preview
+// Create compact problem card (entire card is clickable)
 function createProblemCard(problem) {
-  const card = document.createElement("div");
-  card.className = "problem-card-wide";
+  const card = document.createElement("a");
+  card.className = "problem-card-compact";
+  card.href = `problem.html?id=${problem.id}`;
   
   const title = problem.title || `Problem #${problem.id}`;
   const statementPreview = getStatementPreview(problem.statement);
+  const difficulty = (problem.difficulty || "Medium").toLowerCase();
+  
+  // Build tags HTML
+  const tagsHTML = (problem.tags && problem.tags.length > 0) 
+    ? problem.tags.map(tag => `<span class="meta-tag">${escapeHtml(tag)}</span>`).join("")
+    : "";
   
   card.innerHTML = `
-    <div class="problem-header">
-      <span class="problem-id">#${problem.id}</span>
-      <span class="problem-category">${problem.category || "General"}</span>
-      <span class="problem-difficulty difficulty-${(problem.difficulty || "medium").toLowerCase()}">${problem.difficulty || "Medium"}</span>
+    <div class="problem-title-line">
+      <span class="problem-id-inline">#${problem.id}</span>${escapeHtml(title)}
     </div>
-    
-    ${title !== `Problem #${problem.id}` ? `<h3 style="margin: 0.5rem 0;">${escapeHtml(title)}</h3>` : ""}
-    
-    ${problem.tags && problem.tags.length > 0 ? `
-      <div class="problem-tags">
-        ${problem.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}
-      </div>
-    ` : ""}
-    
+    <div class="problem-metadata-line">
+      <span class="meta-category">${escapeHtml(problem.category || "General")}</span>
+      <span class="meta-difficulty ${difficulty}">${escapeHtml(problem.difficulty || "Medium")}</span>
+      ${tagsHTML}
+    </div>
     <div class="problem-body">
       ${statementPreview}
-    </div>
-    
-    <div class="problem-footer">
-      <a href="problem.html?id=${problem.id}" class="btn">View Full Problem →</a>
     </div>
   `;
   
