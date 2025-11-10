@@ -137,6 +137,21 @@
 }
 
 /* ===== Math Display Support ===== */
+/* Keep inline math inline */
+.problem-body mjx-container[jax="CHTML"][display="false"] {
+  display: inline !important;
+  margin: 0 !important;
+}
+
+/* Block math (display mode) */
+.problem-body mjx-container[jax="CHTML"][display="true"] {
+  display: block !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  margin: 0.5em 0;
+}
+
 /* Mobile-specific math scaling */
 @media (max-width: 640px) {
   .MathJax {
@@ -147,7 +162,6 @@
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
-    display: block;
   }
 }
 
@@ -155,11 +169,4 @@
   .MathJax {
     font-size: 0.75em !important;
   }
-}
-
-/* Horizontal scroll for long equations */
-mjx-container[display="true"] {
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
 }
