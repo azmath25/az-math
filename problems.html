@@ -1,172 +1,134 @@
-/* ===== COMPACT PROBLEM CARDS - Override/Addition to minimal-style.css ===== */
-/* Super space-efficient problem display with hashtag-style metadata */
-
-.problems-wide-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.problem-card-compact {
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-left: 3px solid #0066cc;
-  padding: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  display: block;
-  color: inherit;
-}
-
-.problem-card-compact:hover {
-  border-left-color: #0052a3;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transform: translateX(2px);
-}
-
-/* Line 1: ID + Title combined */
-.problem-title-line {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #1a1a1a;
-  margin-bottom: 6px;
-  line-height: 1.3;
-}
-
-.problem-id-inline {
-  color: #0066cc;
-  font-weight: 700;
-  margin-right: 8px;
-}
-
-/* Line 2: All metadata in one blue line with hashtag style */
-.problem-metadata-line {
-  background: #e3f2fd;
-  padding: 6px 10px;
-  margin: 0 -12px 12px -12px;
-  font-size: 0.85rem;
-  color: #1565c0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.meta-category {
-  font-weight: 600;
-  color: #0d47a1;
-}
-
-.meta-difficulty {
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 2px;
-}
-
-.meta-difficulty.easy {
-  background: #c8e6c9;
-  color: #1b5e20;
-}
-
-.meta-difficulty.medium {
-  background: #fff3e0;
-  color: #e65100;
-}
-
-.meta-difficulty.hard {
-  background: #ffcdd2;
-  color: #b71c1c;
-}
-
-.meta-tag {
-  color: #1976d2;
-  font-weight: 500;
-}
-
-.meta-tag::before {
-  content: '#';
-}
-
-/* Problem body - clean and simple */
-.problem-body {
-  margin: 12px 0;
-  line-height: 1.7;
-  color: #333;
-}
-
-.problem-body p {
-  margin-bottom: 8px;
-}
-
-/* Footer actions - HIDDEN, card is clickable */
-.problem-footer {
-  display: none;
-}
-
-/* ===== Pagination ===== */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-  margin-top: 24px;
-  flex-wrap: wrap;
-}
-
-/* ===== Mobile Optimizations ===== */
-@media (max-width: 640px) {
-  .problem-card-compact {
-    padding: 10px;
-  }
-
-  .problem-title-line {
-    font-size: 1rem;
-  }
-
-  .problem-metadata-line {
-    font-size: 0.8rem;
-    gap: 6px;
-    padding: 5px 8px;
-    margin: 0 -10px 10px -10px;
-  }
-
-  .problem-body {
-    font-size: 0.95rem;
-  }
-}
-
-/* ===== Math Display Support ===== */
-/* Keep inline math inline */
-.problem-body mjx-container[jax="CHTML"][display="false"] {
-  display: inline !important;
-  margin: 0 !important;
-}
-
-/* Block math (display mode) */
-.problem-body mjx-container[jax="CHTML"][display="true"] {
-  display: block !important;
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
-  margin: 0.5em 0;
-}
-
-/* Mobile-specific math scaling */
-@media (max-width: 640px) {
-  .MathJax {
-    font-size: 0.85em !important;
-  }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Problems - Az-Math</title>
+  <link rel="stylesheet" href="css/minimal-style.css">
+  <link rel="stylesheet" href="css/problems-compact.css">
   
-  .problem-body mjx-container {
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-}
+  <!-- MathJax Configuration -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$']],
+        displayMath: [['$$', '$$']],
+        processEscapes: true
+      },
+      svg: {
+        fontCache: 'global',
+        scale: 0.95
+      },
+      options: {
+        menuOptions: {
+          settings: {
+            zoom: 'NoZoom'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+  
+  <script type="module" src="js/main.js" defer></script>
+  <script type="module" src="js/menu.js" defer></script>
+  <script type="module" src="js/problems.js" defer></script>
+</head>
+<body>
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="nav-left">
+      <button class="hamburger" id="menu-toggle">☰</button>
+      <span class="site-title">Az-Math</span>
+    </div>
+    <div class="nav-right">
+      <img src="assets/img/defaultprofile.png" alt="Profile" class="profile-icon" id="profile-photo">
+    </div>
+  </header>
 
-@media (max-width: 400px) {
-  .MathJax {
-    font-size: 0.75em !important;
-  }
-}
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="lessons.html">Lessons</a></li>
+      <li><a href="profile.html">Profile</a></li>
+    </ul>
+  </nav>
+
+  <!-- Dynamic Menu -->
+  <div id="menu"></div>
+
+  <main class="content">
+    <h1>Math Problems</h1>
+    
+    <!-- Search and Filters -->
+    <div class="search-container">
+      <input type="text" id="search-input" placeholder="Search problems by title, tags, or content...">
+      
+      <div class="filters">
+        <select id="category-filter">
+          <option value="">All Categories</option>
+          <option value="Algebra">Algebra</option>
+          <option value="Geometry">Geometry</option>
+          <option value="Number Theory">Number Theory</option>
+          <option value="Combinatorics">Combinatorics</option>
+        </select>
+        
+        <select id="difficulty-filter">
+          <option value="">All Difficulties</option>
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Problems List -->
+    <div id="problems-list" class="problems-wide-list">
+      <!-- Problems will be loaded by JS -->
+      <!-- Example structure: -->
+      <!--
+      <a href="problem.html?id=1" class="problem-card-compact">
+        <div class="problem-title-line">
+          <span class="problem-id-inline">#1</span>Find the value of x
+        </div>
+        <div class="problem-metadata-line">
+          <span class="meta-category">Algebra</span>
+          <span class="meta-difficulty easy">Easy</span>
+          <span class="meta-tag">equations</span>
+          <span class="meta-tag">linear</span>
+        </div>
+        <div class="problem-body">
+          <p>Solve for x: $2x + 5 = 13$</p>
+        </div>
+      </a>
+      -->
+    </div>
+    
+    <!-- Pagination -->
+    <div class="pagination">
+      <button id="prev-page" class="btn btn-secondary" disabled>← Previous</button>
+      <span id="page-info">Page 1</span>
+      <button id="next-page" class="btn btn-secondary">Next →</button>
+    </div>
+  </main>
+
+  <script>
+    // Menu toggle
+    document.getElementById('menu-toggle')?.addEventListener('click', () => {
+      document.getElementById('sidebar')?.classList.toggle('open');
+    });
+
+    // Close sidebar when clicking outside
+    document.addEventListener('click', (e) => {
+      const sidebar = document.getElementById('sidebar');
+      const menuToggle = document.getElementById('menu-toggle');
+      if (sidebar?.classList.contains('open') && 
+          !sidebar.contains(e.target) && 
+          !menuToggle?.contains(e.target)) {
+        sidebar.classList.remove('open');
+      }
+    });
+  </script>
+</body>
+</html>
