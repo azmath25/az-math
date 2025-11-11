@@ -1,33 +1,18 @@
-// js/edit-problem.js - UPDATED TO USE REUSABLE RTE
-import {
-  db,
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp
-} from "../js/firebase.js";
+// js/edit-problem.js - Fixed with RTE Integration
+import { db, doc, getDoc, setDoc, serverTimestamp } from "./firebase.js";
+import { populateCategorySelect } from "./categories-utils.js";
+import { createRichTextEditor } from "./rte.js";
 
-import { populateCategorySelect } from "../js/categories-utils.js";
-import { openPhotoUploadModal, uploadPhotoToStorage } from "../js/photo-utils.js";
-import { auth } from "../js/firebase.js";
-import { createRichTextEditor } from "../js/rte.js"; // ← ADD THIS IMPORT
+// Store RTE instances for cleanup
+const rteInstances = new Map();
 
-let solutionCounter = 0;
-
-// REMOVE OLD FUNCTIONS:
-// - createRichTextToolbar()
-// - initializeRichTextEditor()
-// - handleCommand()
-// - showMathModal()
-// - getRichTextContent()
-
-// CREATE BLOCK ELEMENT - UPDATED VERSION
-function createBlockElement(block = { type: "text", content: "" }) {
+// Create block element with RTE for text blocks
+function createBlockElement(block = { type: "text", content: "" }, blockId = Date.now()) {
   const wrapper = document.createElement("div");
   wrapper.className = "block-editor";
+  wrapper.dataset.blockId = blockId;
   
   if (block.type === "text") {
-    // Create block header
     wrapper.innerHTML = `
       <div class="block-header">
         <span>📝 Text Block</span>
@@ -37,27 +22,21 @@ function createBlockElement(block = { type: "text", content: "" }) {
           <button type="button" class="btn-icon remove-block" title="Remove">✕</button>
         </div>
       </div>
+      <div class="rte-container"></div>
     `;
     
-    // Create container for RTE
-    const editorContainer = document.createElement("div");
-    editorContainer.className = "rte-container";
-    wrapper.appendChild(editorContainer);
-    
-    // Create reusable rich text editor instance
-    const rteInstance = createRichTextEditor(editorContainer, {
+    // Create RTE instance
+    const container = wrapper.querySelector('.rte-container');
+    const rte = createRichTextEditor(container, {
       initialContent: block.content || '',
-      placeholder: 'Type your content here... Use $math$ for inline math or $$math$$ for display math',
-      minHeight: '150px',
-      maxHeight: '400px',
-      toolbar: ['bold', 'italic', 'underline', 'headings', 'lists', 'align', 'link', 'math', 'clear']
+      placeholder: 'Enter problem text (supports math with $...$ and $$...$$)',
+      minHeight: '150px'
     });
     
-    // Store instance on wrapper for later retrieval
-    wrapper._rteInstance = rteInstance;
+    // Store instance for later retrieval
+    rteInstances.set(blockId, rte);
     
   } else if (block.type === "image") {
-    // ... your existing image block code ...
     wrapper.innerHTML = `
       <div class="block-header">
         <span>🖼️ Image Block</span>
@@ -67,63 +46,8 @@ function createBlockElement(block = { type: "text", content: "" }) {
           <button type="button" class="btn-icon remove-block" title="Remove">✕</button>
         </div>
       </div>
-      <div class="image-upload-mode">
-        <button type="button" class="mode-btn ${block.uploadMode === 'upload' ? '' : 'active'}" data-mode="url">🔗 URL</button>
-        <button type="button" class="mode-btn ${block.uploadMode === 'upload' ? 'active' : ''}" data-mode="upload">📤 Upload</button>
-      </div>
-      <div class="image-input-container">
-        <div class="url-mode" style="display: ${block.uploadMode === 'upload' ? 'none' : 'block'};">
-          <input type="url" class="image-url-input" placeholder="Image URL (https://...)" value="${escapeHtml(block.url || "")}" />
-        </div>
-        <div class="upload-mode" style="display: ${block.uploadMode === 'upload' ? 'block' : 'none'};">
-          <div class="image-upload-area">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <p>Click to upload image</p>
-            <p class="upload-hint">JPG, PNG, or GIF (Max 5MB)</p>
-          </div>
-        </div>
-        ${block.url ? `
-          <div class="image-preview-container">
-            <img src="${escapeHtml(block.url)}" alt="Preview" />
-            <button type="button" class="remove-preview">Remove Image</button>
-          </div>
-        ` : ''}
-      </div>
+      <input type="text" class="block-input" placeholder="Image URL (https://...)" value="${escapeHtml(block.url || "")}">
     `;
-    
-    // Your existing image block event listeners...
-    wrapper.querySelectorAll(".mode-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const mode = btn.dataset.mode;
-        wrapper.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        
-        wrapper.querySelector(".url-mode").style.display = mode === "url" ? "block" : "none";
-        wrapper.querySelector(".upload-mode").style.display = mode === "upload" ? "block" : "none";
-        
-        wrapper.dataset.uploadMode = mode;
-      });
-    });
-    
-    const uploadArea = wrapper.querySelector(".image-upload-area");
-    if (uploadArea) {
-      uploadArea.addEventListener("click", () => {
-        handleImageUpload(wrapper);
-      });
-    }
-    
-    const removeBtn = wrapper.querySelector(".remove-preview");
-    if (removeBtn) {
-      removeBtn.addEventListener("click", () => {
-        const previewContainer = wrapper.querySelector(".image-preview-container");
-        if (previewContainer) previewContainer.remove();
-        wrapper.querySelector(".image-url-input").value = "";
-      });
-    }
-    
   } else if (block.type === "problem") {
     wrapper.innerHTML = `
       <div class="block-header">
@@ -150,130 +74,78 @@ function createBlockElement(block = { type: "text", content: "" }) {
     `;
   }
   
-  // Attach common event listeners
+  // Attach event listeners
   wrapper.querySelector(".remove-block").addEventListener("click", () => {
-    // Cleanup RTE instance if exists
-    if (wrapper._rteInstance) {
-      wrapper._rteInstance.destroy();
+    // Clean up RTE instance if it exists
+    if (rteInstances.has(blockId)) {
+      rteInstances.get(blockId).destroy();
+      rteInstances.delete(blockId);
     }
     wrapper.remove();
   });
+  
   wrapper.querySelector(".move-up").addEventListener("click", () => moveBlock(wrapper, -1));
   wrapper.querySelector(".move-down").addEventListener("click", () => moveBlock(wrapper, 1));
   
   return wrapper;
 }
 
-// GATHER BLOCKS - UPDATED VERSION
-function gatherBlocksFromContainer(container) {
-  const blocks = [];
+// Create solution editor with RTE
+function createSolutionEditor(solution = { title: "", blocks: [] }, solutionIndex) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "solution-editor";
+  wrapper.dataset.solutionIndex = solutionIndex;
   
-  container.querySelectorAll(".block-editor").forEach(blockEl => {
-    // Check for RTE instance (text blocks)
-    if (blockEl._rteInstance) {
-      blocks.push({ 
-        type: "text", 
-        content: blockEl._rteInstance.getContent() 
-      });
-      return;
-    }
-    
-    // Check for image blocks
-    const urlInput = blockEl.querySelector(".image-url-input");
-    if (urlInput) {
-      const uploadMode = blockEl.querySelector(".mode-btn.active")?.dataset.mode || "url";
-      blocks.push({ 
-        type: "image", 
-        url: urlInput.value,
-        uploadMode: uploadMode
-      });
-      return;
-    }
-    
-    // Check for problem/lesson refs
-    const input = blockEl.querySelector(".block-input");
-    if (input) {
-      const header = blockEl.querySelector(".block-header span").textContent;
-      if (header.includes("Problem")) {
-        blocks.push({ type: "problem", problemId: input.value });
-      } else if (header.includes("Lesson")) {
-        blocks.push({ type: "lesson", lessonId: input.value });
-      }
-    }
+  wrapper.innerHTML = `
+    <div class="solution-header">
+      <h3>Solution ${solutionIndex + 1}</h3>
+      <button type="button" class="btn-icon remove-solution" title="Remove Solution">✕</button>
+    </div>
+    <label>Solution Title (optional)</label>
+    <input type="text" class="solution-title" placeholder="e.g., Solution 1, Algebraic Method" value="${escapeHtml(solution.title || "")}">
+    <div class="solution-blocks"></div>
+    <div class="block-actions">
+      <button type="button" class="add-text-solution btn btn-small">➕ Text</button>
+      <button type="button" class="add-image-solution btn btn-small">🖼️ Image</button>
+    </div>
+  `;
+  
+  const blocksContainer = wrapper.querySelector(".solution-blocks");
+  
+  // Load existing blocks
+  (solution.blocks || []).forEach(block => {
+    const blockId = Date.now() + Math.random();
+    blocksContainer.appendChild(createBlockElement(block, blockId));
   });
   
-  return blocks;
-}
-
-// Your existing functions remain the same:
-async function handleImageUpload(wrapper) {
-  openPhotoUploadModal({
-    currentPhotoURL: null,
-    aspectRatio: 16 / 9,
-    cropShape: 'rectangle',
-    onSave: async (blob) => {
-      try {
-        const user = auth.currentUser;
-        if (!user) {
-          alert("You must be logged in to upload images");
-          return;
-        }
-        
-        const uploadArea = wrapper.querySelector(".image-upload-area");
-        if (uploadArea) {
-          uploadArea.innerHTML = `
-            <p style="color: #667eea; font-weight: 600;">Uploading...</p>
-            <div style="margin-top: 1rem; font-size: 2rem;">⏳</div>
-          `;
-        }
-        
-        const imageUrl = await uploadPhotoToStorage(blob, `problem_images/${user.uid}`);
-        
-        const urlInput = wrapper.querySelector(".image-url-input");
-        if (urlInput) {
-          urlInput.value = imageUrl;
-        }
-        
-        const existingPreview = wrapper.querySelector(".image-preview-container");
-        if (existingPreview) {
-          existingPreview.remove();
-        }
-        
-        const container = wrapper.querySelector(".image-input-container");
-        const previewDiv = document.createElement("div");
-        previewDiv.className = "image-preview-container";
-        previewDiv.innerHTML = `
-          <img src="${imageUrl}" alt="Preview" />
-          <button type="button" class="remove-preview">Remove Image</button>
-        `;
-        container.appendChild(previewDiv);
-        
-        previewDiv.querySelector(".remove-preview").addEventListener("click", () => {
-          previewDiv.remove();
-          if (urlInput) urlInput.value = "";
-        });
-        
-        if (uploadArea) {
-          uploadArea.innerHTML = `
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <p>Click to upload image</p>
-            <p class="upload-hint">JPG, PNG, or GIF (Max 5MB)</p>
-          `;
-        }
-        
-      } catch (err) {
-        console.error("Error uploading image:", err);
-        alert("Failed to upload image: " + err.message);
-      }
-    },
-    onCancel: () => {}
+  // Add block buttons
+  wrapper.querySelector(".add-text-solution").addEventListener("click", () => {
+    const blockId = Date.now() + Math.random();
+    blocksContainer.appendChild(createBlockElement({ type: "text" }, blockId));
   });
+  
+  wrapper.querySelector(".add-image-solution").addEventListener("click", () => {
+    const blockId = Date.now() + Math.random();
+    blocksContainer.appendChild(createBlockElement({ type: "image" }, blockId));
+  });
+  
+  // Remove solution
+  wrapper.querySelector(".remove-solution").addEventListener("click", () => {
+    // Clean up all RTE instances in this solution
+    wrapper.querySelectorAll('.block-editor').forEach(blockEl => {
+      const blockId = blockEl.dataset.blockId;
+      if (blockId && rteInstances.has(parseInt(blockId))) {
+        rteInstances.get(parseInt(blockId)).destroy();
+        rteInstances.delete(parseInt(blockId));
+      }
+    });
+    wrapper.remove();
+  });
+  
+  return wrapper;
 }
 
-// Move block
+// Move block up or down
 function moveBlock(blockElement, direction) {
   const container = blockElement.parentElement;
   const blocks = Array.from(container.children);
@@ -290,26 +162,22 @@ function moveBlock(blockElement, direction) {
 }
 
 // Gather blocks from container
-function gatherBlocksFromContainer(container) {
+function gatherBlocks(container) {
   const blocks = [];
   
   container.querySelectorAll(".block-editor").forEach(blockEl => {
-    const rteEditor = blockEl.querySelector(".rte-editor");
+    const blockId = blockEl.dataset.blockId;
     const input = blockEl.querySelector(".block-input");
-    const urlInput = blockEl.querySelector(".image-url-input");
     
-    if (rteEditor) {
-      blocks.push({ type: "text", content: getRichTextContent(rteEditor) });
-    } else if (urlInput) {
-      const uploadMode = blockEl.querySelector(".mode-btn.active")?.dataset.mode || "url";
-      blocks.push({ 
-        type: "image", 
-        url: urlInput.value,
-        uploadMode: uploadMode
-      });
+    // Check if this is a text block with RTE
+    if (blockId && rteInstances.has(parseInt(blockId))) {
+      const rte = rteInstances.get(parseInt(blockId));
+      blocks.push({ type: "text", content: rte.getContent() });
     } else if (input) {
       const header = blockEl.querySelector(".block-header span").textContent;
-      if (header.includes("Problem")) {
+      if (header.includes("Image")) {
+        blocks.push({ type: "image", url: input.value });
+      } else if (header.includes("Problem")) {
         blocks.push({ type: "problem", problemId: input.value });
       } else if (header.includes("Lesson")) {
         blocks.push({ type: "lesson", lessonId: input.value });
@@ -320,60 +188,6 @@ function gatherBlocksFromContainer(container) {
   return blocks;
 }
 
-// Render solution editor
-function renderSolutionUI(solution) {
-  const container = document.createElement("div");
-  container.className = "solution-editor";
-  container.dataset.solutionId = solution.id;
-  
-  container.innerHTML = `
-    <div class="solution-header">
-      <h3>Solution ${solution.id}</h3>
-      <button type="button" class="btn btn-small btn-delete remove-solution">Remove Solution</button>
-    </div>
-  `;
-  
-  const blocksContainer = document.createElement("div");
-  blocksContainer.className = "blocks-container";
-  
-  (solution.blocks || []).forEach(block => {
-    blocksContainer.appendChild(createBlockElement(block));
-  });
-  
-  const actions = document.createElement("div");
-  actions.className = "block-actions";
-  actions.innerHTML = `
-    <button type="button" class="btn btn-small add-text">➕ Text</button>
-    <button type="button" class="btn btn-small add-image">🖼️ Image</button>
-    <button type="button" class="btn btn-small add-problem">🔗 Problem Ref</button>
-    <button type="button" class="btn btn-small add-lesson">📚 Lesson Ref</button>
-  `;
-  
-  container.appendChild(blocksContainer);
-  container.appendChild(actions);
-  
-  actions.querySelector(".add-text").addEventListener("click", () => {
-    blocksContainer.appendChild(createBlockElement({ type: "text", content: "" }));
-  });
-  actions.querySelector(".add-image").addEventListener("click", () => {
-    blocksContainer.appendChild(createBlockElement({ type: "image", url: "" }));
-  });
-  actions.querySelector(".add-problem").addEventListener("click", () => {
-    blocksContainer.appendChild(createBlockElement({ type: "problem", problemId: "" }));
-  });
-  actions.querySelector(".add-lesson").addEventListener("click", () => {
-    blocksContainer.appendChild(createBlockElement({ type: "lesson", lessonId: "" }));
-  });
-  
-  container.querySelector(".remove-solution").addEventListener("click", () => {
-    if (confirm("Remove this solution?")) {
-      container.remove();
-    }
-  });
-  
-  return container;
-}
-
 // Escape HTML
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -381,7 +195,7 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Render block preview
+// Render block for preview
 function renderBlockPreview(block) {
   if (!block) return "";
   
@@ -389,7 +203,7 @@ function renderBlockPreview(block) {
     case "text":
       return `<div class="block-text">${block.content || ""}</div>`;
     case "image":
-      return `<div class="block-image"><img src="${escapeHtml(block.url || "")}" alt="Problem image" style="max-width:100%; border-radius: 8px; margin: 1rem 0;" /></div>`;
+      return `<div class="block-image"><img src="${escapeHtml(block.url || "")}" style="max-width:100%; border-radius: 8px; margin: 1rem 0;" alt="Problem image" /></div>`;
     case "problem":
       return `<div class="ref-block"><strong>📝 Related Problem:</strong> <a href="../problem.html?id=${escapeHtml(block.problemId || "")}" class="ref-link">Problem #${escapeHtml(block.problemId || "")}</a></div>`;
     case "lesson":
@@ -409,19 +223,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   const categoryInput = document.getElementById("problem-category");
   const difficultyInput = document.getElementById("problem-difficulty");
   const tagsInput = document.getElementById("problem-tags");
-  const statementBlocks = document.getElementById("statement-blocks");
+  const statementContainer = document.getElementById("statement-blocks");
   const solutionsContainer = document.getElementById("solutions-container");
   const lessonRefsInput = document.getElementById("lesson-refs");
   
-  const addTextBtn = document.getElementById("add-text-statement");
-  const addImageBtn = document.getElementById("add-image-statement");
-  const addProblemRefBtn = document.getElementById("add-problem-ref-statement");
-  const addLessonRefBtn = document.getElementById("add-lesson-ref-statement");
+  const addTextStatementBtn = document.getElementById("add-text-statement");
+  const addImageStatementBtn = document.getElementById("add-image-statement");
+  const addProblemRefStatementBtn = document.getElementById("add-problem-ref-statement");
+  const addLessonRefStatementBtn = document.getElementById("add-lesson-ref-statement");
   const addSolutionBtn = document.getElementById("add-solution-btn");
   const saveDraftBtn = document.getElementById("save-draft-btn");
   const publishBtn = document.getElementById("publish-btn");
   const previewBtn = document.getElementById("preview-btn");
   
+  // Load categories
   let currentCategory = '';
   if (problemId) {
     try {
@@ -436,24 +251,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   await populateCategorySelect(categoryInput, currentCategory);
   
-  addTextBtn.addEventListener("click", () => {
-    statementBlocks.appendChild(createBlockElement({ type: "text", content: "" }));
-  });
-  addImageBtn.addEventListener("click", () => {
-    statementBlocks.appendChild(createBlockElement({ type: "image", url: "" }));
-  });
-  addProblemRefBtn.addEventListener("click", () => {
-    statementBlocks.appendChild(createBlockElement({ type: "problem", problemId: "" }));
-  });
-  addLessonRefBtn.addEventListener("click", () => {
-    statementBlocks.appendChild(createBlockElement({ type: "lesson", lessonId: "" }));
+  // Add statement block handlers
+  addTextStatementBtn.addEventListener("click", () => {
+    const blockId = Date.now() + Math.random();
+    statementContainer.appendChild(createBlockElement({ type: "text" }, blockId));
   });
   
+  addImageStatementBtn.addEventListener("click", () => {
+    const blockId = Date.now() + Math.random();
+    statementContainer.appendChild(createBlockElement({ type: "image" }, blockId));
+  });
+  
+  addProblemRefStatementBtn.addEventListener("click", () => {
+    const blockId = Date.now() + Math.random();
+    statementContainer.appendChild(createBlockElement({ type: "problem" }, blockId));
+  });
+  
+  addLessonRefStatementBtn.addEventListener("click", () => {
+    const blockId = Date.now() + Math.random();
+    statementContainer.appendChild(createBlockElement({ type: "lesson" }, blockId));
+  });
+  
+  // Add solution handler
   addSolutionBtn.addEventListener("click", () => {
-    solutionCounter++;
-    solutionsContainer.appendChild(renderSolutionUI({ id: solutionCounter, blocks: [] }));
+    const index = solutionsContainer.children.length;
+    solutionsContainer.appendChild(createSolutionEditor({}, index));
   });
   
+  // Load existing problem if ID provided
   if (problemId) {
     problemIdInput.value = problemId;
     
@@ -469,15 +294,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         tagsInput.value = (data.tags || []).join(", ");
         lessonRefsInput.value = (data.lessons || []).join(", ");
         
-        statementBlocks.innerHTML = "";
+        // Load statement blocks
+        statementContainer.innerHTML = "";
         (data.statement || []).forEach(block => {
-          statementBlocks.appendChild(createBlockElement(block));
+          const blockId = Date.now() + Math.random();
+          statementContainer.appendChild(createBlockElement(block, blockId));
         });
         
+        // Load solutions
         solutionsContainer.innerHTML = "";
-        (data.solutions || []).forEach(solution => {
-          if (solution.id > solutionCounter) solutionCounter = solution.id;
-          solutionsContainer.appendChild(renderSolutionUI(solution));
+        (data.solutions || []).forEach((solution, index) => {
+          solutionsContainer.appendChild(createSolutionEditor(solution, index));
         });
       }
     } catch (err) {
@@ -486,6 +313,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
   
+  // Save problem
   async function saveProblem(publish = false) {
     const pid = problemIdInput.value;
     if (!pid) {
@@ -493,23 +321,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     
+    // Gather solutions
     const solutions = [];
-    solutionsContainer.querySelectorAll(".solution-editor").forEach((solEl, index) => {
-      const solId = parseInt(solEl.dataset.solutionId) || (index + 1);
-      const blocksContainer = solEl.querySelector(".blocks-container");
-      solutions.push({
-        id: solId,
-        blocks: gatherBlocksFromContainer(blocksContainer)
-      });
+    solutionsContainer.querySelectorAll(".solution-editor").forEach(solEl => {
+      const title = solEl.querySelector(".solution-title").value.trim();
+      const blocks = gatherBlocks(solEl.querySelector(".solution-blocks"));
+      solutions.push({ title, blocks });
     });
     
     const payload = {
       id: parseInt(pid),
-      title: titleInput.value.trim() || null,
+      title: titleInput.value.trim() || `Problem #${pid}`,
       category: categoryInput.value,
       difficulty: difficultyInput.value,
       tags: tagsInput.value.split(",").map(t => t.trim()).filter(Boolean),
-      statement: gatherBlocksFromContainer(statementBlocks),
+      statement: gatherBlocks(statementContainer),
       solutions: solutions,
       lessons: lessonRefsInput.value.split(",").map(x => x.trim()).filter(Boolean).map(x => parseInt(x)),
       draft: !publish,
@@ -533,6 +359,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   saveDraftBtn.addEventListener("click", () => saveProblem(false));
   publishBtn.addEventListener("click", () => saveProblem(true));
   
+  // Preview
   previewBtn.addEventListener("click", () => {
     const editorForm = document.getElementById("editor-form");
     const previewMode = document.getElementById("preview-mode");
@@ -548,40 +375,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     previewMode.style.display = "block";
     previewBtn.textContent = "✏️ Edit";
     
+    // Render preview
     const title = titleInput.value || `Problem #${problemIdInput.value}`;
     document.getElementById("preview-title").textContent = title;
     document.getElementById("preview-id").textContent = `#${problemIdInput.value}`;
     document.getElementById("preview-category").textContent = categoryInput.value || "General";
     document.getElementById("preview-difficulty").textContent = difficultyInput.value;
+    document.getElementById("preview-difficulty").className = `meta-item difficulty-${difficultyInput.value.toLowerCase()}`;
     
+    // Tags
     const previewTags = document.getElementById("preview-tags");
     previewTags.innerHTML = "";
     tagsInput.value.split(",").map(t => t.trim()).filter(Boolean).forEach(tag => {
       previewTags.insertAdjacentHTML("beforeend", `<span class="tag">${escapeHtml(tag)}</span>`);
     });
     
+    // Statement
     const previewStatement = document.getElementById("preview-statement");
     previewStatement.innerHTML = "";
-    gatherBlocksFromContainer(statementBlocks).forEach(block => {
+    gatherBlocks(statementContainer).forEach(block => {
       previewStatement.insertAdjacentHTML("beforeend", renderBlockPreview(block));
     });
     
+    // Solutions
     const previewSolutions = document.getElementById("preview-solutions");
     previewSolutions.innerHTML = "";
     
     solutionsContainer.querySelectorAll(".solution-editor").forEach((solEl, index) => {
-      const solDiv = document.createElement("div");
-      solDiv.className = "solution-block";
-      solDiv.innerHTML = `<h3>Solution ${index + 1}</h3>`;
+      const title = solEl.querySelector(".solution-title").value.trim() || `Solution ${index + 1}`;
+      const blocks = gatherBlocks(solEl.querySelector(".solution-blocks"));
       
-      const blocksContainer = solEl.querySelector(".blocks-container");
-      gatherBlocksFromContainer(blocksContainer).forEach(block => {
-        solDiv.insertAdjacentHTML("beforeend", renderBlockPreview(block));
+      let solutionHtml = `<div class="solution-block"><h3>${escapeHtml(title)}</h3>`;
+      blocks.forEach(block => {
+        solutionHtml += renderBlockPreview(block);
       });
+      solutionHtml += `</div>`;
       
-      previewSolutions.appendChild(solDiv);
+      previewSolutions.insertAdjacentHTML("beforeend", solutionHtml);
     });
     
+    // Typeset MathJax
     if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise([previewMode]).catch(err => {
         console.error("MathJax error:", err);
