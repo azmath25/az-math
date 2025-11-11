@@ -23,7 +23,7 @@
 .problem-meta-compact {
   background: #e3f2fd;
   padding: 6px 10px;
-  margin: 8px -16px 12px -16px;
+  margin: 8px -16px 16px -16px;
   font-size: 0.85rem;
   color: #1565c0;
   display: flex;
@@ -43,25 +43,24 @@
   color: #90caf9;
 }
 
-/* Compact Tags - hashtag style */
+/* Compact Tags - hashtag style in blue strip */
 .problem-tags-compact {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 8px 0 12px 0;
+  gap: 8px;
 }
 
 .problem-tags-compact .tag {
-  background: #f5f5f5;
-  border: 1px solid #e0e0e0;
-  padding: 3px 8px;
-  font-size: 0.8rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  color: #059669;
+  font-weight: 600;
 }
 
 .problem-tags-compact .tag::before {
   content: '#';
-  color: #0066cc;
-  font-weight: 600;
 }
 
 /* Compact Sections */
@@ -74,6 +73,12 @@
 .section-compact:first-of-type {
   border-top: none;
   padding-top: 0;
+  margin-top: 0;
+}
+
+/* Hide section title for problem statement */
+.section-compact:first-of-type .section-title-compact {
+  display: none;
 }
 
 .section-title-compact {
@@ -98,6 +103,21 @@
 
 .btn-toggle {
   white-space: nowrap;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.btn-collapse {
+  white-space: nowrap;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #ccc;
+}
+
+.btn-collapse:hover {
+  background: #e0e0e0;
 }
 
 /* Compact Content Blocks */
@@ -143,6 +163,21 @@
   font-size: 1rem;
   color: #059669;
   font-weight: 600;
+}
+
+/* Fix list enumeration in solutions */
+.solutions-compact .solution-block ol,
+.solutions-compact .solution-block ul,
+.content-blocks-compact ol,
+.content-blocks-compact ul {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.solutions-compact .solution-block li,
+.content-blocks-compact li {
+  margin: 6px 0;
+  padding-left: 4px;
 }
 
 /* Reference list compact */
@@ -221,12 +256,11 @@
     font-size: 0.8rem;
     gap: 6px;
     padding: 5px 8px;
-    margin: 8px -12px 10px -12px;
+    margin: 8px -12px 12px -12px;
   }
 
   .problem-tags-compact .tag {
-    font-size: 0.75rem;
-    padding: 2px 6px;
+    font-size: 0.8rem;
   }
 
   .section-compact {
