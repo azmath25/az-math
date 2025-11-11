@@ -1,4 +1,4 @@
-// js/edit-problem.js - Fixed with RTE Integration
+// js/edit-problem.js - Fixed with proper blockId handling
 import { db, doc, getDoc, setDoc, serverTimestamp } from "./firebase.js";
 import { populateCategorySelect } from "./categories-utils.js";
 import { createRichTextEditor } from "./rte.js";
@@ -6,8 +6,17 @@ import { createRichTextEditor } from "./rte.js";
 // Store RTE instances for cleanup
 const rteInstances = new Map();
 
+// Generate unique blockId - use string to avoid float issues
+function generateBlockId() {
+  return `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
 // Create block element with RTE for text blocks
-function createBlockElement(block = { type: "text", content: "" }, blockId = Date.now()) {
+function createBlockElement(block = { type: "text", content: "" }, blockId = null) {
+  if (!blockId) {
+    blockId = generateBlockId();
+  }
+  
   const wrapper = document.createElement("div");
   wrapper.className = "block-editor";
   wrapper.dataset.blockId = blockId;
@@ -114,19 +123,16 @@ function createSolutionEditor(solution = { title: "", blocks: [] }, solutionInde
   
   // Load existing blocks
   (solution.blocks || []).forEach(block => {
-    const blockId = Date.now() + Math.random();
-    blocksContainer.appendChild(createBlockElement(block, blockId));
+    blocksContainer.appendChild(createBlockElement(block));
   });
   
   // Add block buttons
   wrapper.querySelector(".add-text-solution").addEventListener("click", () => {
-    const blockId = Date.now() + Math.random();
-    blocksContainer.appendChild(createBlockElement({ type: "text" }, blockId));
+    blocksContainer.appendChild(createBlockElement({ type: "text" }));
   });
   
   wrapper.querySelector(".add-image-solution").addEventListener("click", () => {
-    const blockId = Date.now() + Math.random();
-    blocksContainer.appendChild(createBlockElement({ type: "image" }, blockId));
+    blocksContainer.appendChild(createBlockElement({ type: "image" }));
   });
   
   // Remove solution
@@ -134,9 +140,9 @@ function createSolutionEditor(solution = { title: "", blocks: [] }, solutionInde
     // Clean up all RTE instances in this solution
     wrapper.querySelectorAll('.block-editor').forEach(blockEl => {
       const blockId = blockEl.dataset.blockId;
-      if (blockId && rteInstances.has(parseInt(blockId))) {
-        rteInstances.get(parseInt(blockId)).destroy();
-        rteInstances.delete(parseInt(blockId));
+      if (blockId && rteInstances.has(blockId)) {
+        rteInstances.get(blockId).destroy();
+        rteInstances.delete(blockId);
       }
     });
     wrapper.remove();
@@ -169,10 +175,12 @@ function gatherBlocks(container) {
     const blockId = blockEl.dataset.blockId;
     const input = blockEl.querySelector(".block-input");
     
-    // Check if this is a text block with RTE
-    if (blockId && rteInstances.has(parseInt(blockId))) {
-      const rte = rteInstances.get(parseInt(blockId));
-      blocks.push({ type: "text", content: rte.getContent() });
+    // Check if this is a text block with RTE - use exact string match
+    if (blockId && rteInstances.has(blockId)) {
+      const rte = rteInstances.get(blockId);
+      const content = rte.getContent();
+      console.log('Gathering text block:', blockId, 'Content length:', content.length); // Debug
+      blocks.push({ type: "text", content: content });
     } else if (input) {
       const header = blockEl.querySelector(".block-header span").textContent;
       if (header.includes("Image")) {
@@ -185,6 +193,7 @@ function gatherBlocks(container) {
     }
   });
   
+  console.log('Total blocks gathered:', blocks.length); // Debug
   return blocks;
 }
 
@@ -253,23 +262,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   // Add statement block handlers
   addTextStatementBtn.addEventListener("click", () => {
-    const blockId = Date.now() + Math.random();
-    statementContainer.appendChild(createBlockElement({ type: "text" }, blockId));
+    statementContainer.appendChild(createBlockElement({ type: "text" }));
   });
   
   addImageStatementBtn.addEventListener("click", () => {
-    const blockId = Date.now() + Math.random();
-    statementContainer.appendChild(createBlockElement({ type: "image" }, blockId));
+    statementContainer.appendChild(createBlockElement({ type: "image" }));
   });
   
   addProblemRefStatementBtn.addEventListener("click", () => {
-    const blockId = Date.now() + Math.random();
-    statementContainer.appendChild(createBlockElement({ type: "problem" }, blockId));
+    statementContainer.appendChild(createBlockElement({ type: "problem" }));
   });
   
   addLessonRefStatementBtn.addEventListener("click", () => {
-    const blockId = Date.now() + Math.random();
-    statementContainer.appendChild(createBlockElement({ type: "lesson" }, blockId));
+    statementContainer.appendChild(createBlockElement({ type: "lesson" }));
   });
   
   // Add solution handler
@@ -297,8 +302,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Load statement blocks
         statementContainer.innerHTML = "";
         (data.statement || []).forEach(block => {
-          const blockId = Date.now() + Math.random();
-          statementContainer.appendChild(createBlockElement(block, blockId));
+          statementContainer.appendChild(createBlockElement(block));
         });
         
         // Load solutions
@@ -321,6 +325,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     
+    console.log('Starting save...'); // Debug
+    
     // Gather solutions
     const solutions = [];
     solutionsContainer.querySelectorAll(".solution-editor").forEach(solEl => {
@@ -329,19 +335,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       solutions.push({ title, blocks });
     });
     
+    const statement = gatherBlocks(statementContainer);
+    
+    console.log('Statement blocks:', statement.length); // Debug
+    console.log('Solutions:', solutions.length); // Debug
+    
     const payload = {
       id: parseInt(pid),
       title: titleInput.value.trim() || `Problem #${pid}`,
       category: categoryInput.value,
       difficulty: difficultyInput.value,
       tags: tagsInput.value.split(",").map(t => t.trim()).filter(Boolean),
-      statement: gatherBlocks(statementContainer),
+      statement: statement,
       solutions: solutions,
       lessons: lessonRefsInput.value.split(",").map(x => x.trim()).filter(Boolean).map(x => parseInt(x)),
       draft: !publish,
       author: "admin",
       timestamp: serverTimestamp()
     };
+    
+    console.log('Payload:', JSON.stringify(payload, null, 2)); // Debug
     
     try {
       await setDoc(doc(db, "problems", String(pid)), payload, { merge: true });
