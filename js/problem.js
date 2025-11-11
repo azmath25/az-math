@@ -271,7 +271,7 @@ function toggleSolutions() {
     
     solutionsContainer.style.display = "block";
     if (toggleButton) {
-      toggleButton.textContent = "Hide Solutions";
+      toggleButton.textContent = "▲";
     }
     solutionsVisible = true;
     
@@ -285,7 +285,7 @@ function toggleSolutions() {
     // Hide solutions
     solutionsContainer.style.display = "none";
     if (toggleButton) {
-      toggleButton.textContent = "👁️ Show Solutions";
+      toggleButton.textContent = "Həllərə bax";
     }
     solutionsVisible = false;
   }
