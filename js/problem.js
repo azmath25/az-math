@@ -255,7 +255,7 @@ function toggleSolutions() {
       const solutionDiv = document.createElement("div");
       solutionDiv.className = "solution-block";
       
-      const header = `<h3>Solution ${solution.id || index + 1}</h3>`;
+      const header = `<h3>Həll ${solution.id || index + 1}</h3>`;
       solutionDiv.innerHTML = header;
       
       if (solution.blocks && solution.blocks.length > 0) {
