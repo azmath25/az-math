@@ -31,7 +31,7 @@ async function loadProblems() {
     const q = query(
       collection(db, "problems"),
       where("draft", "==", false),
-      orderBy("id")
+      orderBy("id", "desc")
     );
     
     const snapshot = await getDocs(q);
