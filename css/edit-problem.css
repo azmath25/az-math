@@ -1,0 +1,482 @@
+/* ===== EDIT PROBLEM PAGE SPECIFIC STYLES ===== */
+/* Additional styles for image upload and UI enhancements */
+
+/* Image Mode Toggle */
+.image-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+}
+
+.image-mode-toggle .mode-btn {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.image-mode-toggle .mode-btn:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.image-mode-toggle .mode-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* Upload/URL Mode Containers */
+.upload-mode,
+.url-mode {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.upload-mode.active,
+.url-mode.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Upload Button Styling */
+.upload-image-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.upload-image-btn:hover {
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  transform: translateY(-2px);
+}
+
+.upload-image-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Upload Status */
+.upload-status {
+  margin-left: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+/* Image Preview Containers */
+.image-preview-container {
+  margin-top: 1rem;
+  text-align: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+}
+
+.image-preview,
+.uploaded-image-preview {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.75rem;
+  transition: transform 0.3s ease;
+}
+
+.image-preview:hover,
+.uploaded-image-preview:hover {
+  transform: scale(1.02);
+}
+
+.url-mode .image-preview-container {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.remove-image-btn {
+  margin-top: 0.5rem;
+}
+
+/* Image URL Input Specific */
+.image-url-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+  font-family: inherit;
+}
+
+.image-url-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Block Editor Improvements */
+.block-editor {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.block-editor:hover {
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
+}
+
+/* Auto-save Indicator */
+#autosave-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-radius: 8px;
+  transition: opacity 0.3s ease;
+}
+
+/* Button Spinners */
+.btn-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Notification Styles Enhancement */
+.notification {
+  font-family: inherit;
+}
+
+/* Loading Overlay Enhancement */
+#loading-overlay {
+  font-family: inherit;
+}
+
+/* Solution Editor Enhancements */
+.solution-editor {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.1);
+  transition: all 0.3s ease;
+}
+
+.solution-editor:hover {
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+}
+
+.solution-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #bfdbfe;
+}
+
+.solution-header h3 {
+  margin: 0;
+  color: #1e40af;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.solution-title {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.solution-title:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Preview Mode Enhancements */
+.preview-mode {
+  animation: fadeIn 0.3s ease;
+}
+
+.preview-mode .problem-detail {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 2.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.preview-mode .section {
+  margin: 2.5rem 0;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e5e7eb;
+}
+
+.preview-mode .section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Improve RTE Wrapper Specificity */
+.block-editor .rte-wrapper,
+.solution-editor .rte-wrapper {
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: white !important;
+  margin-bottom: 0 !important;
+}
+
+.block-editor .rte-editor,
+.solution-editor .rte-editor {
+  background: white !important;
+  color: #1e293b !important;
+  padding: 1.25rem !important;
+  min-height: 150px !important;
+}
+
+.block-editor .rte-toolbar,
+.solution-editor .rte-toolbar {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+/* Math Formula in Blocks */
+.block-text .math-formula,
+.content-blocks .math-formula {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-family: 'Times New Roman', serif;
+  color: #1e293b;
+  margin: 0 0.125rem;
+  font-size: 0.95em;
+  user-select: none;
+  cursor: default;
+  transition: all 0.2s;
+}
+
+.block-text .math-formula:hover,
+.content-blocks .math-formula:hover {
+  background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%);
+  border-color: #667eea;
+}
+
+/* Accessibility Improvements */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus Indicators */
+.btn:focus-visible,
+.btn-icon:focus-visible,
+.mode-btn:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Required Field Indicators */
+label:has(+ [aria-required="true"])::after,
+label:has(~ small + [aria-required="true"])::after {
+  content: " *";
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* Form Section Improvements */
+.form-section {
+  position: relative;
+}
+
+.form-section small {
+  display: block;
+  margin-top: 0.5rem;
+  color: #64748b;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* Block Actions Improvements */
+.block-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.block-actions .btn {
+  flex-shrink: 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .editor-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .editor-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .editor-actions > * {
+    width: 100%;
+  }
+
+  #autosave-indicator {
+    order: -1;
+    width: auto;
+  }
+
+  .image-mode-toggle {
+    flex-direction: column;
+  }
+
+  .image-mode-toggle .mode-btn {
+    width: 100%;
+  }
+
+  .solution-editor {
+    padding: 1.5rem;
+  }
+
+  .preview-mode .problem-detail {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .block-actions {
+    flex-direction: column;
+  }
+
+  .block-actions .btn {
+    width: 100%;
+  }
+
+  .image-preview,
+  .uploaded-image-preview {
+    max-height: 200px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .editor-header,
+  .block-controls,
+  .block-actions,
+  .image-mode-toggle,
+  .upload-mode,
+  #autosave-indicator {
+    display: none !important;
+  }
+
+  .editor-form,
+  .preview-mode {
+    display: block !important;
+  }
+
+  .solution-editor {
+    border: 1px solid #ccc;
+    break-inside: avoid;
+  }
+
+  .block-editor {
+    break-inside: avoid;
+  }
+}
+
+/* Dark Mode Support (if implemented in future) */
+@media (prefers-color-scheme: dark) {
+  /* Will be added if dark mode is implemented */
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection Styling */
+::selection {
+  background: #667eea;
+  color: white;
+}
+
+/* Custom Scrollbar for Editor Areas */
+.blocks-container::-webkit-scrollbar,
+.solution-blocks::-webkit-scrollbar {
+  width: 8px;
+}
+
+.blocks-container::-webkit-scrollbar-track,
+.solution-blocks::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.blocks-container::-webkit-scrollbar-thumb,
+.solution-blocks::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.blocks-container::-webkit-scrollbar-thumb:hover,
+.solution-blocks::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
