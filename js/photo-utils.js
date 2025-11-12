@@ -1,16 +1,260 @@
-// js/photo-utils.js
-// Complete photo utilities with profile fix, archive, and change photo support
+// js/photo-utils.js - Enhanced photo utilities with archive, optimization, and effects
+// Complete photo utilities with profile fix, archive, optimization, and filters support
 
 import { storage, ref, uploadBytes, getDownloadURL, listAll, deleteObject } from "./firebase.js";
 
 /**
- * Create and show a photo upload modal with cropping functionality
+ * Optimize image before upload (resize if too large, compress)
+ * @param {Blob} blob - Original image blob
+ * @param {Object} options - Optimization options
+ * @returns {Promise<Blob>} Optimized image blob
+ */
+export async function optimizeImage(blob, options = {}) {
+  const config = {
+    maxWidth: options.maxWidth || 1920,
+    maxHeight: options.maxHeight || 1920,
+    quality: options.quality || 0.85,
+    format: options.format || 'image/jpeg'
+  };
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      // Check if resizing is needed
+      let width = img.width;
+      let height = img.height;
+      const needsResize = width > config.maxWidth || height > config.maxHeight;
+
+      if (needsResize) {
+        // Calculate new dimensions maintaining aspect ratio
+        if (width > height) {
+          if (width > config.maxWidth) {
+            height = Math.round((height * config.maxWidth) / width);
+            width = config.maxWidth;
+          }
+        } else {
+          if (height > config.maxHeight) {
+            width = Math.round((width * config.maxHeight) / height);
+            height = config.maxHeight;
+          }
+        }
+      }
+
+      // Create canvas and draw optimized image
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      // Use better image smoothing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert to blob
+      canvas.toBlob(
+        (optimizedBlob) => {
+          if (optimizedBlob) {
+            console.log(`[Optimize] Original: ${(blob.size / 1024).toFixed(0)}KB → Optimized: ${(optimizedBlob.size / 1024).toFixed(0)}KB`);
+            resolve(optimizedBlob);
+          } else {
+            reject(new Error('Failed to optimize image'));
+          }
+        },
+        config.format,
+        config.quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image for optimization'));
+    };
+
+    img.src = url;
+  });
+}
+
+/**
+ * Archive old photo before uploading new one
+ * @param {string} currentPhotoURL - URL of current photo to archive
+ * @param {string} userId - User ID for organizing archives
+ * @param {Object} options - Archive options
+ */
+export async function archiveOldPhoto(currentPhotoURL, userId, options = {}) {
+  const config = {
+    keepArchiveDays: options.keepArchiveDays || 30,
+    maxArchiveSize: options.maxArchiveSize || 10 * 1024 * 1024 // 10MB default
+  };
+
+  if (!currentPhotoURL || !currentPhotoURL.includes('firebasestorage.googleapis.com')) {
+    console.log('[Archive] No valid photo to archive');
+    return null;
+  }
+
+  try {
+    // Extract path from URL
+    const urlObj = new URL(currentPhotoURL);
+    const pathMatch = urlObj.pathname.match(/\/o\/(.+)\?/);
+    if (!pathMatch) {
+      console.warn('[Archive] Could not extract path from URL');
+      return null;
+    }
+
+    const oldPath = decodeURIComponent(pathMatch[1]);
+    const timestamp = Date.now();
+    const archivePath = `profile_photos/${userId}/archive/${timestamp}_archived.jpg`;
+
+    // Get the old file
+    const oldRef = ref(storage, oldPath);
+    const oldURL = await getDownloadURL(oldRef);
+    const response = await fetch(oldURL);
+    const blob = await response.blob();
+
+    // Upload to archive
+    const archiveRef = ref(storage, archivePath);
+    await uploadBytes(archiveRef, blob);
+
+    console.log('[Archive] Successfully archived old photo:', archivePath);
+
+    // Cleanup old archives
+    await cleanupOldArchives(userId, config.keepArchiveDays);
+
+    return archivePath;
+
+  } catch (err) {
+    console.error('[Archive] Failed to archive photo:', err);
+    return null;
+  }
+}
+
+/**
+ * Delete archived photos older than specified days
+ * @param {string} userId - User ID
+ * @param {number} daysOld - Delete archives older than this many days
+ */
+export async function cleanupOldArchives(userId, daysOld = 30) {
+  try {
+    const archivePath = `profile_photos/${userId}/archive`;
+    const archiveRef = ref(storage, archivePath);
+    
+    const result = await listAll(archiveRef);
+    const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
+    
+    let deletedCount = 0;
+    
+    for (const item of result.items) {
+      const match = item.name.match(/^(\d+)_archived/);
+      if (match) {
+        const timestamp = parseInt(match[1]);
+        if (timestamp < cutoffTime) {
+          await deleteObject(item);
+          deletedCount++;
+        }
+      }
+    }
+    
+    console.log(`[Cleanup] Deleted ${deletedCount} old archived photos for user ${userId}`);
+    return deletedCount;
+
+  } catch (err) {
+    console.error('[Cleanup] Error cleaning up archives:', err);
+    return 0;
+  }
+}
+
+/**
+ * Validate image URL
+ * @param {string} url - URL to validate
+ * @returns {Promise<Object>} Validation result {valid, width, height, size}
+ */
+export async function validateImageUrl(url) {
+  return new Promise((resolve) => {
+    if (!url || typeof url !== 'string') {
+      resolve({ valid: false, error: 'Invalid URL' });
+      return;
+    }
+
+    // Check URL format
+    try {
+      new URL(url);
+    } catch {
+      resolve({ valid: false, error: 'Malformed URL' });
+      return;
+    }
+
+    // Try to load image
+    const img = new Image();
+    
+    img.onload = () => {
+      resolve({
+        valid: true,
+        width: img.width,
+        height: img.height,
+        aspectRatio: img.width / img.height
+      });
+    };
+
+    img.onerror = () => {
+      resolve({ valid: false, error: 'Failed to load image' });
+    };
+
+    // Set timeout
+    setTimeout(() => {
+      if (!img.complete) {
+        img.src = '';
+        resolve({ valid: false, error: 'Load timeout' });
+      }
+    }, 10000);
+
+    img.src = url;
+  });
+}
+
+/**
+ * Upload multiple photos
+ * @param {FileList|Array} files - Files to upload
+ * @param {string} basePath - Base storage path
+ * @returns {Promise<Array>} Array of download URLs
+ */
+export async function uploadMultiplePhotos(files, basePath) {
+  const urls = [];
+  const errors = [];
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    
+    try {
+      // Optimize before upload
+      const optimized = await optimizeImage(file);
+      
+      // Upload
+      const filename = `${basePath}/${Date.now()}_${i}.jpg`;
+      const url = await uploadPhotoToStorage(optimized, filename);
+      
+      urls.push(url);
+      console.log(`[Batch Upload] ${i + 1}/${files.length} uploaded`);
+      
+    } catch (err) {
+      console.error(`[Batch Upload] Failed to upload file ${i}:`, err);
+      errors.push({ index: i, filename: file.name, error: err.message });
+    }
+  }
+
+  if (errors.length > 0) {
+    console.warn('[Batch Upload] Some uploads failed:', errors);
+  }
+
+  return { urls, errors };
+}
+
+/**
+ * Create and show photo upload modal with cropping and effects
  * @param {Object} options - Configuration options
- * @param {string} options.currentPhotoURL - Current photo URL (optional)
- * @param {number} options.aspectRatio - Aspect ratio for cropping (default: 1 for square)
- * @param {string} options.cropShape - 'circle' or 'rectangle' (default: 'circle')
- * @param {Function} options.onSave - Callback function when photo is saved (receives blob)
- * @param {Function} options.onCancel - Callback function when cancelled (optional)
  */
 export function openPhotoUploadModal(options = {}) {
   const {
@@ -18,16 +262,18 @@ export function openPhotoUploadModal(options = {}) {
     aspectRatio = 1,
     cropShape = 'circle',
     onSave = () => {},
-    onCancel = () => {}
+    onCancel = () => {},
+    showEffects = true,
+    allowRotation = true
   } = options;
 
-  // Create modal overlay
+  // Create modal
   const modal = document.createElement("div");
   modal.className = "photo-modal-overlay";
   modal.innerHTML = `
     <div class="photo-modal">
       <div class="photo-modal-header">
-        <h3>Upload Image</h3>
+        <h3>📷 Upload Image</h3>
         <button class="photo-modal-close" aria-label="Close">&times;</button>
       </div>
       
@@ -40,9 +286,12 @@ export function openPhotoUploadModal(options = {}) {
             </svg>
             <p style="font-size: 1.125rem; font-weight: 500; margin: 1rem 0 0.5rem;">Click to upload or drag & drop</p>
             <p class="photo-upload-hint">JPG, PNG or GIF (Max 5MB)</p>
+            <p class="photo-upload-hint" style="margin-top: 0.5rem;">💡 Tip: You can also paste from clipboard (Ctrl+V)</p>
           </div>
           ${currentPhotoURL ? `
-            <img src="${currentPhotoURL}" alt="Current photo" id="photo-preview" style="max-width: 200px; max-height: 200px; ${cropShape === 'circle' ? 'border-radius: 50%;' : 'border-radius: 10px;'} object-fit: cover; margin-top: 1rem;" />
+            <img src="${currentPhotoURL}" alt="Current photo" id="photo-preview" 
+                 style="max-width: 200px; max-height: 200px; ${cropShape === 'circle' ? 'border-radius: 50%;' : 'border-radius: 10px;'} 
+                 object-fit: cover; margin-top: 1rem;" />
           ` : ''}
           <input type="file" id="photo-file-input" accept="image/*" style="display: none;" />
         </div>
@@ -55,7 +304,8 @@ export function openPhotoUploadModal(options = {}) {
             <button type="button" class="btn btn-small" id="zoom-in-btn">🔍+ Zoom In</button>
             <button type="button" class="btn btn-small" id="zoom-out-btn">🔍- Zoom Out</button>
             <button type="button" class="btn btn-small btn-secondary" id="reset-crop-btn">🔄 Reset</button>
-            <button type="button" class="btn btn-small btn-secondary" id="rotate-btn">↻ Rotate 90°</button>
+            ${allowRotation ? '<button type="button" class="btn btn-small btn-secondary" id="rotate-btn">↻ Rotate 90°</button>' : ''}
+            ${showEffects ? '<button type="button" class="btn btn-small btn-secondary" id="effects-btn">✨ Effects</button>' : ''}
           </div>
           <p class="crop-hint">💡 Drag to reposition • Scroll to zoom • Use buttons for fine control</p>
         </div>
@@ -84,6 +334,7 @@ export function openPhotoUploadModal(options = {}) {
   const zoomOutBtn = modal.querySelector("#zoom-out-btn");
   const resetBtn = modal.querySelector("#reset-crop-btn");
   const rotateBtn = modal.querySelector("#rotate-btn");
+  const effectsBtn = modal.querySelector("#effects-btn");
 
   let currentImage = null;
   let scale = 1;
@@ -93,8 +344,11 @@ export function openPhotoUploadModal(options = {}) {
   let isDragging = false;
   let startX = 0;
   let startY = 0;
+  let brightness = 0;
+  let contrast = 0;
+  let saturation = 0;
 
-  // Close modal function
+  // Close modal
   const closeModal = () => {
     modal.remove();
     onCancel();
@@ -129,6 +383,23 @@ export function openPhotoUploadModal(options = {}) {
     }
   });
 
+  // Clipboard paste
+  const pasteHandler = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        handleFileSelect(file);
+        return;
+      }
+    }
+  };
+  
+  document.addEventListener('paste', pasteHandler);
+
   // File input change
   fileInput.addEventListener("change", (e) => {
     if (e.target.files.length > 0) {
@@ -154,6 +425,9 @@ export function openPhotoUploadModal(options = {}) {
       img.onload = () => {
         currentImage = img;
         rotation = 0;
+        brightness = 0;
+        contrast = 0;
+        saturation = 0;
         initializeCropper();
       };
       img.src = e.target.result;
@@ -195,12 +469,15 @@ export function openPhotoUploadModal(options = {}) {
     drawImage();
   }
 
-  // Draw image on canvas
+  // Draw image with effects
   function drawImage() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawCheckerboard();
     
     ctx.save();
+    
+    // Apply filters
+    ctx.filter = `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100}) saturate(${1 + saturation / 100})`;
     
     if (rotation !== 0) {
       ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -213,6 +490,7 @@ export function openPhotoUploadModal(options = {}) {
     ctx.drawImage(currentImage, 0, 0);
     ctx.restore();
 
+    // Draw overlay
     ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -237,13 +515,6 @@ export function openPhotoUploadModal(options = {}) {
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.stroke();
       
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = "rgba(59, 130, 246, 0.6)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius + 2, 0, Math.PI * 2);
-      ctx.stroke();
-      
     } else {
       const cropWidth = canvas.width - (cropMargin * 2);
       const cropHeight = canvas.height - (cropMargin * 2);
@@ -257,11 +528,6 @@ export function openPhotoUploadModal(options = {}) {
       ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
       ctx.shadowBlur = 8;
       ctx.strokeRect(cropMargin, cropMargin, cropWidth, cropHeight);
-      
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = "rgba(59, 130, 246, 0.6)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(cropMargin - 1, cropMargin - 1, cropWidth + 2, cropHeight + 2);
     }
     
     ctx.shadowBlur = 0;
@@ -282,7 +548,7 @@ export function openPhotoUploadModal(options = {}) {
     }
   }
 
-  // Mouse events
+  // Mouse/touch events
   canvas.addEventListener("mousedown", (e) => {
     isDragging = true;
     startX = e.offsetX;
@@ -319,66 +585,6 @@ export function openPhotoUploadModal(options = {}) {
     drawImage();
   });
 
-  // Touch events
-  let touchStartDistance = 0;
-  canvas.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    
-    if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      isDragging = true;
-      startX = touch.clientX - rect.left;
-      startY = touch.clientY - rect.top;
-    } else if (e.touches.length === 2) {
-      isDragging = false;
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      touchStartDistance = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-      );
-    }
-  });
-
-  canvas.addEventListener("touchmove", (e) => {
-    e.preventDefault();
-    
-    if (e.touches.length === 1 && isDragging) {
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      const currentX = touch.clientX - rect.left;
-      const currentY = touch.clientY - rect.top;
-      const dx = currentX - startX;
-      const dy = currentY - startY;
-      offsetX += dx;
-      offsetY += dy;
-      startX = currentX;
-      startY = currentY;
-      drawImage();
-    } else if (e.touches.length === 2) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const currentDistance = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-      );
-      
-      if (touchStartDistance > 0) {
-        const delta = currentDistance / touchStartDistance;
-        scale *= delta;
-        drawImage();
-      }
-      
-      touchStartDistance = currentDistance;
-    }
-  });
-
-  canvas.addEventListener("touchend", () => {
-    isDragging = false;
-    touchStartDistance = 0;
-  });
-
   // Buttons
   zoomInBtn.addEventListener("click", () => {
     scale *= 1.2;
@@ -393,6 +599,9 @@ export function openPhotoUploadModal(options = {}) {
   resetBtn.addEventListener("click", () => {
     if (currentImage) {
       rotation = 0;
+      brightness = 0;
+      contrast = 0;
+      saturation = 0;
       const scaleX = canvas.width / currentImage.width;
       const scaleY = canvas.height / currentImage.height;
       scale = Math.max(scaleX, scaleY);
@@ -402,10 +611,75 @@ export function openPhotoUploadModal(options = {}) {
     }
   });
 
-  rotateBtn.addEventListener("click", () => {
-    rotation = (rotation + 90) % 360;
-    drawImage();
-  });
+  if (rotateBtn) {
+    rotateBtn.addEventListener("click", () => {
+      rotation = (rotation + 90) % 360;
+      drawImage();
+    });
+  }
+
+  if (effectsBtn) {
+    effectsBtn.addEventListener("click", () => {
+      showEffectsPanel();
+    });
+  }
+
+  // Effects panel
+  function showEffectsPanel() {
+    const existingPanel = modal.querySelector('.effects-panel');
+    if (existingPanel) {
+      existingPanel.remove();
+      return;
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'effects-panel';
+    panel.innerHTML = `
+      <h4 style="margin: 0 0 1rem; font-size: 1rem;">Adjust Effects</h4>
+      <div class="effect-control">
+        <label>Brightness</label>
+        <input type="range" min="-50" max="50" value="${brightness}" id="brightness-slider" />
+        <span id="brightness-value">${brightness}</span>
+      </div>
+      <div class="effect-control">
+        <label>Contrast</label>
+        <input type="range" min="-50" max="50" value="${contrast}" id="contrast-slider" />
+        <span id="contrast-value">${contrast}</span>
+      </div>
+      <div class="effect-control">
+        <label>Saturation</label>
+        <input type="range" min="-100" max="100" value="${saturation}" id="saturation-slider" />
+        <span id="saturation-value">${saturation}</span>
+      </div>
+    `;
+
+    cropContainer.appendChild(panel);
+
+    const brightnessSlider = panel.querySelector('#brightness-slider');
+    const contrastSlider = panel.querySelector('#contrast-slider');
+    const saturationSlider = panel.querySelector('#saturation-slider');
+    const brightnessValue = panel.querySelector('#brightness-value');
+    const contrastValue = panel.querySelector('#contrast-value');
+    const saturationValue = panel.querySelector('#saturation-value');
+
+    brightnessSlider.addEventListener('input', (e) => {
+      brightness = parseInt(e.target.value);
+      brightnessValue.textContent = brightness;
+      drawImage();
+    });
+
+    contrastSlider.addEventListener('input', (e) => {
+      contrast = parseInt(e.target.value);
+      contrastValue.textContent = contrast;
+      drawImage();
+    });
+
+    saturationSlider.addEventListener('input', (e) => {
+      saturation = parseInt(e.target.value);
+      saturationValue.textContent = saturation;
+      drawImage();
+    });
+  }
 
   // Save button
   saveBtn.addEventListener("click", () => {
@@ -451,6 +725,9 @@ export function openPhotoUploadModal(options = {}) {
       finalCtx.clip();
     }
 
+    // Apply effects to final image
+    finalCtx.filter = `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100}) saturate(${1 + saturation / 100})`;
+
     if (rotation !== 0) {
       finalCtx.translate(finalWidth / 2, finalHeight / 2);
       finalCtx.rotate((rotation * Math.PI) / 180);
@@ -463,21 +740,43 @@ export function openPhotoUploadModal(options = {}) {
       0, 0, finalWidth, finalHeight
     );
 
-    finalCanvas.toBlob((blob) => {
-      closeModal();
-      onSave(blob);
+    finalCanvas.toBlob(async (blob) => {
+      // Optimize before saving
+      try {
+        const optimized = await optimizeImage(blob, { quality: 0.92 });
+        closeModal();
+        document.removeEventListener('paste', pasteHandler);
+        onSave(optimized);
+      } catch (err) {
+        console.error('Optimization failed:', err);
+        closeModal();
+        document.removeEventListener('paste', pasteHandler);
+        onSave(blob);
+      }
     }, "image/jpeg", 0.92);
   });
 
   // Close handlers
-  closeBtn.addEventListener("click", closeModal);
-  cancelBtn.addEventListener("click", closeModal);
+  closeBtn.addEventListener("click", () => {
+    document.removeEventListener('paste', pasteHandler);
+    closeModal();
+  });
+  
+  cancelBtn.addEventListener("click", () => {
+    document.removeEventListener('paste', pasteHandler);
+    closeModal();
+  });
+  
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeModal();
+    if (e.target === modal) {
+      document.removeEventListener('paste', pasteHandler);
+      closeModal();
+    }
   });
 
   document.addEventListener("keydown", function escapeHandler(e) {
     if (e.key === "Escape") {
+      document.removeEventListener('paste', pasteHandler);
       closeModal();
       document.removeEventListener("keydown", escapeHandler);
     }
@@ -485,64 +784,17 @@ export function openPhotoUploadModal(options = {}) {
 }
 
 /**
- * Archive old photo before uploading new one
- * @param {string} currentPhotoURL - URL of current photo to archive
- * @param {string} userId - User ID for organizing archives
- */
-export async function archiveOldPhoto(currentPhotoURL, userId) {
-  if (!currentPhotoURL || !currentPhotoURL.includes('firebasestorage.googleapis.com')) {
-    console.log('[Archive] No valid photo to archive');
-    return null;
-  }
-
-  try {
-    // Extract path from URL
-    const urlObj = new URL(currentPhotoURL);
-    const pathMatch = urlObj.pathname.match(/\/o\/(.+)\?/);
-    if (!pathMatch) {
-      console.warn('[Archive] Could not extract path from URL');
-      return null;
-    }
-
-    const oldPath = decodeURIComponent(pathMatch[1]);
-    const timestamp = Date.now();
-    const archivePath = `profile_photos/${userId}/archive/${timestamp}_archived.jpg`;
-
-    // Get the old file reference
-    const oldRef = ref(storage, oldPath);
-    
-    // Download the old file
-    const oldURL = await getDownloadURL(oldRef);
-    const response = await fetch(oldURL);
-    const blob = await response.blob();
-
-    // Upload to archive location
-    const archiveRef = ref(storage, archivePath);
-    await uploadBytes(archiveRef, blob);
-
-    console.log('[Archive] Successfully archived old photo:', archivePath);
-    return archivePath;
-
-  } catch (err) {
-    console.error('[Archive] Failed to archive photo:', err);
-    return null; // Don't fail upload if archive fails
-  }
-}
-
-/**
- * Upload photo blob to Firebase Storage with archive support
+ * Upload photo blob to Firebase Storage with optimization and archive
  * @param {Blob} blob - Image blob to upload
- * @param {string} path - Storage path (e.g., 'profile_photos/user123' or 'problem_images/17/img456')
- * @param {Object} options - Optional settings
- * @param {string} options.currentPhotoURL - Current photo URL to archive before upload
- * @param {string} options.userId - User ID for archive organization
- * @returns {Promise<string>} Download URL of uploaded photo
+ * @param {string} path - Storage path
+ * @param {Object} options - Upload options
+ * @returns {Promise<string>} Download URL
  */
 export async function uploadPhotoToStorage(blob, path, options = {}) {
   try {
     const { currentPhotoURL, userId } = options;
 
-    // Archive old photo if this is a profile photo update
+    // Archive old photo if updating
     if (currentPhotoURL && userId && path.includes('profile_photos')) {
       await archiveOldPhoto(currentPhotoURL, userId);
     }
@@ -562,42 +814,6 @@ export async function uploadPhotoToStorage(blob, path, options = {}) {
   } catch (err) {
     console.error('[Upload] Error uploading photo:', err);
     throw new Error("Failed to upload photo: " + err.message);
-  }
-}
-
-/**
- * Delete archived photos older than specified days
- * @param {string} userId - User ID
- * @param {number} daysOld - Delete archives older than this many days (default: 30)
- */
-export async function cleanupOldArchives(userId, daysOld = 30) {
-  try {
-    const archivePath = `profile_photos/${userId}/archive`;
-    const archiveRef = ref(storage, archivePath);
-    
-    const result = await listAll(archiveRef);
-    const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
-    
-    let deletedCount = 0;
-    
-    for (const item of result.items) {
-      // Extract timestamp from filename
-      const match = item.name.match(/^(\d+)_archived/);
-      if (match) {
-        const timestamp = parseInt(match[1]);
-        if (timestamp < cutoffTime) {
-          await deleteObject(item);
-          deletedCount++;
-        }
-      }
-    }
-    
-    console.log(`[Cleanup] Deleted ${deletedCount} old archived photos for user ${userId}`);
-    return deletedCount;
-
-  } catch (err) {
-    console.error('[Cleanup] Error cleaning up archives:', err);
-    return 0;
   }
 }
 
@@ -789,6 +1005,82 @@ function addPhotoModalStyles() {
       background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     }
 
+    .effects-panel {
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      border: 2px solid #bae6fd;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .effect-control {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .effect-control:last-child {
+      margin-bottom: 0;
+    }
+
+    .effect-control label {
+      min-width: 100px;
+      font-weight: 600;
+      color: #0c4a6e;
+      font-size: 0.875rem;
+    }
+
+    .effect-control input[type="range"] {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: #e0f2fe;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .effect-control input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0284c7;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .effect-control input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0284c7;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .effect-control span {
+      min-width: 40px;
+      text-align: right;
+      font-weight: 600;
+      color: #0c4a6e;
+      font-size: 0.875rem;
+    }
+
     @media (max-width: 768px) {
       .photo-modal {
         max-width: 100%;
@@ -817,6 +1109,15 @@ function addPhotoModalStyles() {
 
       .photo-modal-footer button {
         width: 100%;
+      }
+
+      .effect-control {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .effect-control label {
+        min-width: auto;
       }
     }
   `;
