@@ -1,5 +1,5 @@
 // js/photo-utils.js
-// Reusable photo upload, crop, and storage utilities
+// Phase 1: Improved photo upload modal with better cropper UX
 
 import { storage, ref, uploadBytes, getDownloadURL } from "./firebase.js";
 
@@ -48,12 +48,16 @@ export function openPhotoUploadModal(options = {}) {
         </div>
         
         <div class="photo-crop-container" id="photo-crop-container" style="display: none;">
-          <canvas id="photo-crop-canvas"></canvas>
+          <div class="crop-canvas-wrapper">
+            <canvas id="photo-crop-canvas"></canvas>
+          </div>
           <div class="photo-crop-controls">
             <button type="button" class="btn btn-small" id="zoom-in-btn">🔍+ Zoom In</button>
             <button type="button" class="btn btn-small" id="zoom-out-btn">🔍- Zoom Out</button>
             <button type="button" class="btn btn-small btn-secondary" id="reset-crop-btn">🔄 Reset</button>
+            <button type="button" class="btn btn-small btn-secondary" id="rotate-btn">↻ Rotate 90°</button>
           </div>
+          <p class="crop-hint">💡 Drag to reposition • Scroll to zoom • Use buttons for fine control</p>
         </div>
       </div>
       
@@ -79,11 +83,13 @@ export function openPhotoUploadModal(options = {}) {
   const zoomInBtn = modal.querySelector("#zoom-in-btn");
   const zoomOutBtn = modal.querySelector("#zoom-out-btn");
   const resetBtn = modal.querySelector("#reset-crop-btn");
+  const rotateBtn = modal.querySelector("#rotate-btn");
 
   let currentImage = null;
   let scale = 1;
   let offsetX = 0;
   let offsetY = 0;
+  let rotation = 0; // 0, 90, 180, 270
   let isDragging = false;
   let startX = 0;
   let startY = 0;
@@ -105,15 +111,18 @@ export function openPhotoUploadModal(options = {}) {
   uploadArea.addEventListener("dragover", (e) => {
     e.preventDefault();
     uploadArea.style.borderColor = "#3b82f6";
+    uploadArea.style.background = "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)";
   });
 
   uploadArea.addEventListener("dragleave", () => {
     uploadArea.style.borderColor = "#e2e8f0";
+    uploadArea.style.background = "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)";
   });
 
   uploadArea.addEventListener("drop", (e) => {
     e.preventDefault();
     uploadArea.style.borderColor = "#e2e8f0";
+    uploadArea.style.background = "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)";
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       handleFileSelect(files[0]);
@@ -146,6 +155,7 @@ export function openPhotoUploadModal(options = {}) {
       const img = new Image();
       img.onload = () => {
         currentImage = img;
+        rotation = 0; // Reset rotation
         initializeCropper();
       };
       img.src = e.target.result;
@@ -190,46 +200,103 @@ export function openPhotoUploadModal(options = {}) {
     drawImage();
   }
 
-  // Draw image on canvas
+  // Draw image on canvas with improved overlay
   function drawImage() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw checkerboard background pattern
+    drawCheckerboard();
+    
     ctx.save();
+    
+    // Apply rotation if any
+    if (rotation !== 0) {
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+    }
+    
     ctx.translate(offsetX, offsetY);
     ctx.scale(scale, scale);
     ctx.drawImage(currentImage, 0, 0);
     ctx.restore();
 
-    // Draw crop overlay
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    // Draw semi-transparent overlay (lighter than before)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     const cropMargin = 10;
     
     if (cropShape === 'circle') {
-      // Circle crop
+      // Circle crop with clear visibility
+      const radius = (canvas.width / 2) - cropMargin;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      // Clear the circle area
       ctx.globalCompositeOperation = "destination-out";
       ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, (canvas.width / 2) - cropMargin, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.fill();
       
+      // Draw white border with shadow
       ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = "#3b82f6";
+      ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 3;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, (canvas.width / 2) - cropMargin, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.stroke();
+      
+      // Draw outer glow
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(59, 130, 246, 0.6)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius + 2, 0, Math.PI * 2);
+      ctx.stroke();
+      
     } else {
-      // Rectangle crop
+      // Rectangle crop with clear visibility
       const cropWidth = canvas.width - (cropMargin * 2);
       const cropHeight = canvas.height - (cropMargin * 2);
       
+      // Clear the rectangle area
       ctx.globalCompositeOperation = "destination-out";
       ctx.fillRect(cropMargin, cropMargin, cropWidth, cropHeight);
       
+      // Draw white border with shadow
       ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = "#3b82f6";
+      ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 3;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowBlur = 8;
       ctx.strokeRect(cropMargin, cropMargin, cropWidth, cropHeight);
+      
+      // Draw outer glow
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(59, 130, 246, 0.6)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cropMargin - 1, cropMargin - 1, cropWidth + 2, cropHeight + 2);
+    }
+    
+    // Reset shadow
+    ctx.shadowBlur = 0;
+  }
+
+  // Draw checkerboard pattern background
+  function drawCheckerboard() {
+    const squareSize = 20;
+    const lightColor = "#ffffff";
+    const darkColor = "#e5e7eb";
+    
+    for (let y = 0; y < canvas.height; y += squareSize) {
+      for (let x = 0; x < canvas.width; x += squareSize) {
+        const isEven = (Math.floor(x / squareSize) + Math.floor(y / squareSize)) % 2 === 0;
+        ctx.fillStyle = isEven ? lightColor : darkColor;
+        ctx.fillRect(x, y, squareSize, squareSize);
+      }
     }
   }
 
@@ -263,19 +330,43 @@ export function openPhotoUploadModal(options = {}) {
     canvas.style.cursor = "grab";
   });
 
+  // Mouse wheel zoom
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    scale *= delta;
+    drawImage();
+  });
+
   // Touch events for mobile
+  let touchStartDistance = 0;
   canvas.addEventListener("touchstart", (e) => {
     e.preventDefault();
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    isDragging = true;
-    startX = touch.clientX - rect.left;
-    startY = touch.clientY - rect.top;
+    
+    if (e.touches.length === 1) {
+      // Single touch - pan
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      isDragging = true;
+      startX = touch.clientX - rect.left;
+      startY = touch.clientY - rect.top;
+    } else if (e.touches.length === 2) {
+      // Two touches - pinch zoom
+      isDragging = false;
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      touchStartDistance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+    }
   });
 
   canvas.addEventListener("touchmove", (e) => {
     e.preventDefault();
-    if (isDragging) {
+    
+    if (e.touches.length === 1 && isDragging) {
+      // Pan
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       const currentX = touch.clientX - rect.left;
@@ -287,11 +378,28 @@ export function openPhotoUploadModal(options = {}) {
       startX = currentX;
       startY = currentY;
       drawImage();
+    } else if (e.touches.length === 2) {
+      // Pinch zoom
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const currentDistance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+      
+      if (touchStartDistance > 0) {
+        const delta = currentDistance / touchStartDistance;
+        scale *= delta;
+        drawImage();
+      }
+      
+      touchStartDistance = currentDistance;
     }
   });
 
   canvas.addEventListener("touchend", () => {
     isDragging = false;
+    touchStartDistance = 0;
   });
 
   // Zoom controls
@@ -307,6 +415,7 @@ export function openPhotoUploadModal(options = {}) {
 
   resetBtn.addEventListener("click", () => {
     if (currentImage) {
+      rotation = 0;
       const scaleX = canvas.width / currentImage.width;
       const scaleY = canvas.height / currentImage.height;
       scale = Math.max(scaleX, scaleY);
@@ -314,6 +423,12 @@ export function openPhotoUploadModal(options = {}) {
       offsetY = (canvas.height - currentImage.height * scale) / 2;
       drawImage();
     }
+  });
+
+  // Rotate button
+  rotateBtn.addEventListener("click", () => {
+    rotation = (rotation + 90) % 360;
+    drawImage();
   });
 
   // Save button
@@ -346,6 +461,10 @@ export function openPhotoUploadModal(options = {}) {
     finalCanvas.height = finalHeight;
     const finalCtx = finalCanvas.getContext("2d");
 
+    // White background for JPEGs
+    finalCtx.fillStyle = "#ffffff";
+    finalCtx.fillRect(0, 0, finalWidth, finalHeight);
+
     // Calculate source dimensions
     const sourceWidth = cropWidth / scale;
     const sourceHeight = cropHeight / scale;
@@ -358,6 +477,13 @@ export function openPhotoUploadModal(options = {}) {
       finalCtx.arc(finalWidth / 2, finalHeight / 2, finalWidth / 2, 0, Math.PI * 2);
       finalCtx.closePath();
       finalCtx.clip();
+    }
+
+    // Apply rotation if needed
+    if (rotation !== 0) {
+      finalCtx.translate(finalWidth / 2, finalHeight / 2);
+      finalCtx.rotate((rotation * Math.PI) / 180);
+      finalCtx.translate(-finalWidth / 2, -finalHeight / 2);
     }
 
     finalCtx.drawImage(
@@ -378,6 +504,14 @@ export function openPhotoUploadModal(options = {}) {
   cancelBtn.addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => {
     if (e.target === modal) closeModal();
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", function escapeHandler(e) {
+    if (e.key === "Escape") {
+      closeModal();
+      document.removeEventListener("keydown", escapeHandler);
+    }
   });
 }
 
@@ -419,36 +553,57 @@ function addPhotoModalStyles() {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 9999;
       padding: 1rem;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .photo-modal {
       background: white;
       border-radius: 16px;
-      max-width: 600px;
+      max-width: 650px;
       width: 100%;
       max-height: 90vh;
       overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
     }
 
     .photo-modal-header {
-      padding: 1.5rem;
+      padding: 1.5rem 2rem;
       border-bottom: 2px solid #e2e8f0;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     }
 
     .photo-modal-header h3 {
       margin: 0;
-      font-size: 1.25rem;
+      font-size: 1.5rem;
       color: #1e293b;
+      font-weight: 700;
     }
 
     .photo-modal-close {
@@ -459,8 +614,8 @@ function addPhotoModalStyles() {
       cursor: pointer;
       line-height: 1;
       padding: 0;
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -471,14 +626,15 @@ function addPhotoModalStyles() {
     .photo-modal-close:hover {
       background: #f1f5f9;
       color: #1e293b;
+      transform: rotate(90deg);
     }
 
     .photo-modal-body {
-      padding: 1.5rem;
+      padding: 2rem;
     }
 
     .photo-upload-area {
-      border: 3px dashed #e2e8f0;
+      border: 3px dashed #cbd5e1;
       border-radius: 12px;
       padding: 2rem;
       text-align: center;
@@ -489,11 +645,13 @@ function addPhotoModalStyles() {
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     }
 
     .photo-upload-area:hover {
       border-color: #3b82f6;
-      background: #f8fafc;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      transform: translateY(-2px);
     }
 
     .photo-upload-placeholder {
@@ -507,6 +665,7 @@ function addPhotoModalStyles() {
     .photo-upload-placeholder svg {
       color: #94a3b8;
       margin-bottom: 1rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
     }
 
     .photo-upload-placeholder p {
@@ -522,34 +681,79 @@ function addPhotoModalStyles() {
       text-align: center;
     }
 
+    .crop-canvas-wrapper {
+      display: inline-block;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      margin-bottom: 1.5rem;
+    }
+
     #photo-crop-canvas {
       max-width: 100%;
-      border-radius: 12px;
       cursor: grab;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      display: block;
+    }
+
+    #photo-crop-canvas:active {
+      cursor: grabbing;
     }
 
     .photo-crop-controls {
-      margin-top: 1rem;
       display: flex;
-      gap: 0.5rem;
+      gap: 0.75rem;
       justify-content: center;
       flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .crop-hint {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin: 0;
+      padding: 0.75rem;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
     }
 
     .photo-modal-footer {
-      padding: 1.5rem;
+      padding: 1.5rem 2rem;
       border-top: 2px solid #e2e8f0;
       display: flex;
       justify-content: flex-end;
       gap: 0.75rem;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
       .photo-modal {
+        max-width: 100%;
         margin: 0;
         border-radius: 0;
         max-height: 100vh;
+      }
+
+      .photo-modal-header,
+      .photo-modal-body,
+      .photo-modal-footer {
+        padding: 1rem;
+      }
+
+      .photo-crop-controls {
+        flex-direction: column;
+      }
+
+      .photo-crop-controls button {
+        width: 100%;
+      }
+
+      .photo-modal-footer {
+        flex-direction: column;
+      }
+
+      .photo-modal-footer button {
+        width: 100%;
       }
     }
   `;
