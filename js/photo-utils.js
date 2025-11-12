@@ -1,7 +1,7 @@
 // js/photo-utils.js
-// Phase 1: Improved photo upload modal with better cropper UX
+// Complete photo utilities with profile fix, archive, and change photo support
 
-import { storage, ref, uploadBytes, getDownloadURL } from "./firebase.js";
+import { storage, ref, uploadBytes, getDownloadURL, listAll, deleteObject } from "./firebase.js";
 
 /**
  * Create and show a photo upload modal with cropping functionality
@@ -89,7 +89,7 @@ export function openPhotoUploadModal(options = {}) {
   let scale = 1;
   let offsetX = 0;
   let offsetY = 0;
-  let rotation = 0; // 0, 90, 180, 270
+  let rotation = 0;
   let isDragging = false;
   let startX = 0;
   let startY = 0;
@@ -138,7 +138,6 @@ export function openPhotoUploadModal(options = {}) {
 
   // Handle file selection
   function handleFileSelect(file) {
-    // Validate file
     if (!file.type.startsWith("image/")) {
       alert("Please select an image file");
       return;
@@ -149,13 +148,12 @@ export function openPhotoUploadModal(options = {}) {
       return;
     }
 
-    // Load image
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
         currentImage = img;
-        rotation = 0; // Reset rotation
+        rotation = 0;
         initializeCropper();
       };
       img.src = e.target.result;
@@ -169,14 +167,12 @@ export function openPhotoUploadModal(options = {}) {
     cropContainer.style.display = "block";
     saveBtn.style.display = "inline-block";
 
-    // Set canvas size based on aspect ratio and shape
     const maxSize = 500;
     let canvasWidth, canvasHeight;
     
     if (cropShape === 'circle') {
       canvasWidth = canvasHeight = maxSize;
     } else {
-      // Rectangle with aspect ratio
       if (aspectRatio >= 1) {
         canvasWidth = maxSize;
         canvasHeight = maxSize / aspectRatio;
@@ -189,10 +185,9 @@ export function openPhotoUploadModal(options = {}) {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
 
-    // Reset transformation
     const scaleX = canvasWidth / currentImage.width;
     const scaleY = canvasHeight / currentImage.height;
-    scale = Math.max(scaleX, scaleY); // Cover the canvas
+    scale = Math.max(scaleX, scaleY);
     
     offsetX = (canvasWidth - currentImage.width * scale) / 2;
     offsetY = (canvasHeight - currentImage.height * scale) / 2;
@@ -200,16 +195,13 @@ export function openPhotoUploadModal(options = {}) {
     drawImage();
   }
 
-  // Draw image on canvas with improved overlay
+  // Draw image on canvas
   function drawImage() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw checkerboard background pattern
     drawCheckerboard();
     
     ctx.save();
     
-    // Apply rotation if any
     if (rotation !== 0) {
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.rotate((rotation * Math.PI) / 180);
@@ -221,25 +213,21 @@ export function openPhotoUploadModal(options = {}) {
     ctx.drawImage(currentImage, 0, 0);
     ctx.restore();
 
-    // Draw semi-transparent overlay (lighter than before)
     ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     const cropMargin = 10;
     
     if (cropShape === 'circle') {
-      // Circle crop with clear visibility
       const radius = (canvas.width / 2) - cropMargin;
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       
-      // Clear the circle area
       ctx.globalCompositeOperation = "destination-out";
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.fill();
       
-      // Draw white border with shadow
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 3;
@@ -249,7 +237,6 @@ export function openPhotoUploadModal(options = {}) {
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.stroke();
       
-      // Draw outer glow
       ctx.shadowBlur = 0;
       ctx.strokeStyle = "rgba(59, 130, 246, 0.6)";
       ctx.lineWidth = 1;
@@ -258,15 +245,12 @@ export function openPhotoUploadModal(options = {}) {
       ctx.stroke();
       
     } else {
-      // Rectangle crop with clear visibility
       const cropWidth = canvas.width - (cropMargin * 2);
       const cropHeight = canvas.height - (cropMargin * 2);
       
-      // Clear the rectangle area
       ctx.globalCompositeOperation = "destination-out";
       ctx.fillRect(cropMargin, cropMargin, cropWidth, cropHeight);
       
-      // Draw white border with shadow
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 3;
@@ -274,18 +258,16 @@ export function openPhotoUploadModal(options = {}) {
       ctx.shadowBlur = 8;
       ctx.strokeRect(cropMargin, cropMargin, cropWidth, cropHeight);
       
-      // Draw outer glow
       ctx.shadowBlur = 0;
       ctx.strokeStyle = "rgba(59, 130, 246, 0.6)";
       ctx.lineWidth = 1;
       ctx.strokeRect(cropMargin - 1, cropMargin - 1, cropWidth + 2, cropHeight + 2);
     }
     
-    // Reset shadow
     ctx.shadowBlur = 0;
   }
 
-  // Draw checkerboard pattern background
+  // Draw checkerboard
   function drawCheckerboard() {
     const squareSize = 20;
     const lightColor = "#ffffff";
@@ -300,7 +282,7 @@ export function openPhotoUploadModal(options = {}) {
     }
   }
 
-  // Canvas mouse events for panning
+  // Mouse events
   canvas.addEventListener("mousedown", (e) => {
     isDragging = true;
     startX = e.offsetX;
@@ -330,7 +312,6 @@ export function openPhotoUploadModal(options = {}) {
     canvas.style.cursor = "grab";
   });
 
-  // Mouse wheel zoom
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -338,20 +319,18 @@ export function openPhotoUploadModal(options = {}) {
     drawImage();
   });
 
-  // Touch events for mobile
+  // Touch events
   let touchStartDistance = 0;
   canvas.addEventListener("touchstart", (e) => {
     e.preventDefault();
     
     if (e.touches.length === 1) {
-      // Single touch - pan
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       isDragging = true;
       startX = touch.clientX - rect.left;
       startY = touch.clientY - rect.top;
     } else if (e.touches.length === 2) {
-      // Two touches - pinch zoom
       isDragging = false;
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
@@ -366,7 +345,6 @@ export function openPhotoUploadModal(options = {}) {
     e.preventDefault();
     
     if (e.touches.length === 1 && isDragging) {
-      // Pan
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       const currentX = touch.clientX - rect.left;
@@ -379,7 +357,6 @@ export function openPhotoUploadModal(options = {}) {
       startY = currentY;
       drawImage();
     } else if (e.touches.length === 2) {
-      // Pinch zoom
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       const currentDistance = Math.hypot(
@@ -402,7 +379,7 @@ export function openPhotoUploadModal(options = {}) {
     touchStartDistance = 0;
   });
 
-  // Zoom controls
+  // Buttons
   zoomInBtn.addEventListener("click", () => {
     scale *= 1.2;
     drawImage();
@@ -425,7 +402,6 @@ export function openPhotoUploadModal(options = {}) {
     }
   });
 
-  // Rotate button
   rotateBtn.addEventListener("click", () => {
     rotation = (rotation + 90) % 360;
     drawImage();
@@ -435,9 +411,8 @@ export function openPhotoUploadModal(options = {}) {
   saveBtn.addEventListener("click", () => {
     if (!currentImage) return;
 
-    // Create final cropped canvas
     const finalCanvas = document.createElement("canvas");
-    const finalSize = 800; // Output size
+    const finalSize = 800;
     const cropMargin = 10;
     
     let finalWidth, finalHeight, cropWidth, cropHeight;
@@ -461,25 +436,21 @@ export function openPhotoUploadModal(options = {}) {
     finalCanvas.height = finalHeight;
     const finalCtx = finalCanvas.getContext("2d");
 
-    // White background for JPEGs
     finalCtx.fillStyle = "#ffffff";
     finalCtx.fillRect(0, 0, finalWidth, finalHeight);
 
-    // Calculate source dimensions
     const sourceWidth = cropWidth / scale;
     const sourceHeight = cropHeight / scale;
     const sourceX = (canvas.width / 2 - offsetX) / scale - sourceWidth / 2;
     const sourceY = (canvas.height / 2 - offsetY) / scale - sourceHeight / 2;
 
     if (cropShape === 'circle') {
-      // Circular clip
       finalCtx.beginPath();
       finalCtx.arc(finalWidth / 2, finalHeight / 2, finalWidth / 2, 0, Math.PI * 2);
       finalCtx.closePath();
       finalCtx.clip();
     }
 
-    // Apply rotation if needed
     if (rotation !== 0) {
       finalCtx.translate(finalWidth / 2, finalHeight / 2);
       finalCtx.rotate((rotation * Math.PI) / 180);
@@ -492,21 +463,19 @@ export function openPhotoUploadModal(options = {}) {
       0, 0, finalWidth, finalHeight
     );
 
-    // Convert to blob and callback
     finalCanvas.toBlob((blob) => {
       closeModal();
       onSave(blob);
     }, "image/jpeg", 0.92);
   });
 
-  // Close buttons
+  // Close handlers
   closeBtn.addEventListener("click", closeModal);
   cancelBtn.addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => {
     if (e.target === modal) closeModal();
   });
 
-  // Keyboard shortcuts
   document.addEventListener("keydown", function escapeHandler(e) {
     if (e.key === "Escape") {
       closeModal();
@@ -516,13 +485,69 @@ export function openPhotoUploadModal(options = {}) {
 }
 
 /**
- * Upload photo blob to Firebase Storage
+ * Archive old photo before uploading new one
+ * @param {string} currentPhotoURL - URL of current photo to archive
+ * @param {string} userId - User ID for organizing archives
+ */
+export async function archiveOldPhoto(currentPhotoURL, userId) {
+  if (!currentPhotoURL || !currentPhotoURL.includes('firebasestorage.googleapis.com')) {
+    console.log('[Archive] No valid photo to archive');
+    return null;
+  }
+
+  try {
+    // Extract path from URL
+    const urlObj = new URL(currentPhotoURL);
+    const pathMatch = urlObj.pathname.match(/\/o\/(.+)\?/);
+    if (!pathMatch) {
+      console.warn('[Archive] Could not extract path from URL');
+      return null;
+    }
+
+    const oldPath = decodeURIComponent(pathMatch[1]);
+    const timestamp = Date.now();
+    const archivePath = `profile_photos/${userId}/archive/${timestamp}_archived.jpg`;
+
+    // Get the old file reference
+    const oldRef = ref(storage, oldPath);
+    
+    // Download the old file
+    const oldURL = await getDownloadURL(oldRef);
+    const response = await fetch(oldURL);
+    const blob = await response.blob();
+
+    // Upload to archive location
+    const archiveRef = ref(storage, archivePath);
+    await uploadBytes(archiveRef, blob);
+
+    console.log('[Archive] Successfully archived old photo:', archivePath);
+    return archivePath;
+
+  } catch (err) {
+    console.error('[Archive] Failed to archive photo:', err);
+    return null; // Don't fail upload if archive fails
+  }
+}
+
+/**
+ * Upload photo blob to Firebase Storage with archive support
  * @param {Blob} blob - Image blob to upload
- * @param {string} path - Storage path (e.g., 'profile_photos/user123' or 'problem_images/img456')
+ * @param {string} path - Storage path (e.g., 'profile_photos/user123' or 'problem_images/17/img456')
+ * @param {Object} options - Optional settings
+ * @param {string} options.currentPhotoURL - Current photo URL to archive before upload
+ * @param {string} options.userId - User ID for archive organization
  * @returns {Promise<string>} Download URL of uploaded photo
  */
-export async function uploadPhotoToStorage(blob, path) {
+export async function uploadPhotoToStorage(blob, path, options = {}) {
   try {
+    const { currentPhotoURL, userId } = options;
+
+    // Archive old photo if this is a profile photo update
+    if (currentPhotoURL && userId && path.includes('profile_photos')) {
+      await archiveOldPhoto(currentPhotoURL, userId);
+    }
+
+    // Upload new photo
     const filename = `${path}_${Date.now()}.jpg`;
     const storageRef = ref(storage, filename);
     
@@ -531,10 +556,48 @@ export async function uploadPhotoToStorage(blob, path) {
     });
     
     const downloadURL = await getDownloadURL(storageRef);
+    console.log('[Upload] Successfully uploaded photo:', filename);
     return downloadURL;
+
   } catch (err) {
-    console.error("Error uploading photo:", err);
+    console.error('[Upload] Error uploading photo:', err);
     throw new Error("Failed to upload photo: " + err.message);
+  }
+}
+
+/**
+ * Delete archived photos older than specified days
+ * @param {string} userId - User ID
+ * @param {number} daysOld - Delete archives older than this many days (default: 30)
+ */
+export async function cleanupOldArchives(userId, daysOld = 30) {
+  try {
+    const archivePath = `profile_photos/${userId}/archive`;
+    const archiveRef = ref(storage, archivePath);
+    
+    const result = await listAll(archiveRef);
+    const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
+    
+    let deletedCount = 0;
+    
+    for (const item of result.items) {
+      // Extract timestamp from filename
+      const match = item.name.match(/^(\d+)_archived/);
+      if (match) {
+        const timestamp = parseInt(match[1]);
+        if (timestamp < cutoffTime) {
+          await deleteObject(item);
+          deletedCount++;
+        }
+      }
+    }
+    
+    console.log(`[Cleanup] Deleted ${deletedCount} old archived photos for user ${userId}`);
+    return deletedCount;
+
+  } catch (err) {
+    console.error('[Cleanup] Error cleaning up archives:', err);
+    return 0;
   }
 }
 
