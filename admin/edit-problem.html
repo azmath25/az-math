@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Edit Problem - Az-Math</title>
   
-  <!-- IMPORTANT: Load minimal-style.css FIRST, then rte.css -->
+  <!-- Load CSS in correct order -->
   <link rel="stylesheet" href="../css/minimal-style.css" />
   <link rel="stylesheet" href="../css/rte.css" />
+  <link rel="stylesheet" href="../css/edit-problem.css" />
   
-  <!-- MathJax for Preview Only -->
+  <!-- MathJax for Preview -->
   <script>
     window.MathJax = {
       tex: {
@@ -24,9 +25,9 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
   
+  <!-- JavaScript Modules -->
   <script type="module" src="../js/main.js" defer></script>
   <script type="module" src="../js/menu.js" defer></script>
-  <script type="module" src="../js/rte.js" defer></script>
   <script type="module" src="../js/edit-problem.js" defer></script>
   <script type="module">
     import { protectAdminPage } from "../js/auth.js";
@@ -38,11 +39,11 @@
 <body>
   <header class="navbar">
     <div class="nav-left">
-      <button class="hamburger" id="menu-toggle">☰</button>
+      <button class="hamburger" id="menu-toggle" aria-label="Toggle menu">☰</button>
       <span class="site-title">Az-Math Admin</span>
     </div>
     <div class="nav-right">
-      <img src="../assets/img/defaultprofile.png" class="profile-icon" id="profile-photo" />
+      <img src="../assets/img/defaultprofile.png" class="profile-icon" id="profile-photo" alt="Profile" />
     </div>
   </header>
 
@@ -60,10 +61,21 @@
     <div class="editor-header">
       <h1>Edit Problem</h1>
       <div class="editor-actions">
-        <button id="preview-btn" class="btn btn-secondary">👁️ Preview</button>
-        <button id="save-draft-btn" class="btn btn-secondary">💾 Save as Draft</button>
-        <button id="publish-btn" class="btn">✅ Publish</button>
-        <a href="problems.html" class="btn btn-cancel">❌ Cancel</a>
+        <span id="autosave-indicator" style="opacity: 0; transition: opacity 0.3s; font-size: 0.9rem; color: #10b981; font-weight: 600; margin-right: 1rem;">
+          💾 Auto-saved
+        </span>
+        <button id="preview-btn" class="btn btn-secondary" aria-label="Toggle preview mode">
+          👁️ Preview
+        </button>
+        <button id="save-draft-btn" class="btn btn-secondary" aria-label="Save as draft">
+          💾 Save as Draft
+        </button>
+        <button id="publish-btn" class="btn" aria-label="Publish problem">
+          ✅ Publish
+        </button>
+        <a href="problems.html" class="btn btn-cancel" aria-label="Cancel and return to problems">
+          ❌ Cancel
+        </a>
       </div>
     </div>
 
@@ -72,57 +84,101 @@
       <div class="form-section">
         <h2>Basic Information</h2>
         
-        <label>Problem ID</label>
-        <input type="text" id="problem-id" readonly disabled />
+        <label for="problem-id">Problem ID</label>
+        <input type="text" 
+               id="problem-id" 
+               readonly 
+               disabled 
+               aria-label="Problem ID (auto-generated)" />
         
-        <label>Title (Optional)</label>
-        <input type="text" id="problem-title" placeholder="Leave empty to use 'Problem #ID'" />
+        <label for="problem-title">
+          Title (Optional)
+          <small style="font-weight: normal; color: #718096;">Leave empty to use "Problem #ID"</small>
+        </label>
+        <input type="text" 
+               id="problem-title" 
+               placeholder="Leave empty to use 'Problem #ID'"
+               aria-describedby="title-hint" />
+        <small id="title-hint" style="display: none;">If left empty, the title will default to "Problem #[ID]"</small>
         
-        <label>Category</label>
-        <select id="problem-category">
+        <label for="problem-category">Category *</label>
+        <select id="problem-category" aria-required="true">
           <option value="">Select Category</option>
         </select>
         
-        <label>Difficulty</label>
-        <select id="problem-difficulty">
+        <label for="problem-difficulty">Difficulty *</label>
+        <select id="problem-difficulty" aria-required="true">
           <option value="Easy">Easy</option>
           <option value="Medium">Medium</option>
           <option value="Hard">Hard</option>
         </select>
         
-        <label>Tags (comma-separated)</label>
-        <input type="text" id="problem-tags" placeholder="e.g. inequalities, olympiad" />
+        <label for="problem-tags">Tags (comma-separated)</label>
+        <input type="text" 
+               id="problem-tags" 
+               placeholder="e.g. inequalities, olympiad, algebra"
+               aria-describedby="tags-hint" />
+        <small id="tags-hint">Separate multiple tags with commas</small>
       </div>
 
       <!-- Statement Editor -->
       <div class="form-section">
-        <h2>Problem Statement</h2>
-        <div id="statement-blocks" class="blocks-container"></div>
+        <h2>Problem Statement *</h2>
+        <p style="color: #718096; font-size: 0.95rem; margin-bottom: 1rem;">
+          Add text, images, or references to other problems/lessons to build your problem statement.
+        </p>
+        <div id="statement-blocks" class="blocks-container" role="region" aria-label="Problem statement blocks"></div>
         <div class="block-actions">
-          <button id="add-text-statement" class="btn btn-small">➕ Text</button>
-          <button id="add-image-statement" class="btn btn-small">🖼️ Image</button>
-          <button id="add-problem-ref-statement" class="btn btn-small">🔗 Problem Ref</button>
-          <button id="add-lesson-ref-statement" class="btn btn-small">📚 Lesson Ref</button>
+          <button id="add-text-statement" 
+                  class="btn btn-small" 
+                  aria-label="Add text block to problem statement">
+            ➕ Text
+          </button>
+          <button id="add-image-statement" 
+                  class="btn btn-small"
+                  aria-label="Add image block to problem statement">
+            🖼️ Image
+          </button>
+          <button id="add-problem-ref-statement" 
+                  class="btn btn-small"
+                  aria-label="Add problem reference to statement">
+            🔗 Problem Ref
+          </button>
+          <button id="add-lesson-ref-statement" 
+                  class="btn btn-small"
+                  aria-label="Add lesson reference to statement">
+            📚 Lesson Ref
+          </button>
         </div>
       </div>
 
       <!-- Solutions Editor -->
       <div class="form-section">
         <h2>Solutions</h2>
-        <div id="solutions-container"></div>
-        <button id="add-solution-btn" class="btn">➕ Add Solution</button>
+        <p style="color: #718096; font-size: 0.95rem; margin-bottom: 1rem;">
+          Add one or more solutions to help students understand how to solve this problem.
+        </p>
+        <div id="solutions-container" role="region" aria-label="Solutions"></div>
+        <button id="add-solution-btn" 
+                class="btn"
+                aria-label="Add new solution">
+          ➕ Add Solution
+        </button>
       </div>
 
       <!-- Lesson References -->
       <div class="form-section">
-        <label>Lesson IDs (comma-separated)</label>
-        <input type="text" id="lesson-refs" placeholder="e.g. 1, 2, 3" />
-        <small>Enter the IDs of lessons where this problem is used</small>
+        <label for="lesson-refs">Related Lessons (comma-separated IDs)</label>
+        <input type="text" 
+               id="lesson-refs" 
+               placeholder="e.g. 1, 2, 3"
+               aria-describedby="lessons-hint" />
+        <small id="lessons-hint">Enter the IDs of lessons where this problem is used or referenced</small>
       </div>
     </div>
 
     <!-- Preview Mode -->
-    <div id="preview-mode" class="preview-mode" style="display:none;">
+    <div id="preview-mode" class="preview-mode" style="display:none;" role="region" aria-label="Problem preview">
       <div class="problem-detail">
         <div class="problem-detail-header">
           <h1 id="preview-title">Problem Title</h1>
