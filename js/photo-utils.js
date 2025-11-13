@@ -1,7 +1,22 @@
 // js/photo-utils.js - Enhanced photo utilities with archive, optimization, and effects
 // Complete photo utilities with profile fix, archive, optimization, and filters support
 
-import { storage, ref, uploadBytes, getDownloadURL, listAll, deleteObject } from "./firebase.js";
+import { storage, ref, uploadBytes, getDownloadURL, listAll } from "./firebase.js";
+
+// Helper function to delete object (if deleteObject is available in firebase.js)
+async function safeDeleteObject(fileRef) {
+  try {
+    // Try to dynamically get deleteObject from Firebase SDK
+    const { deleteObject: fbDeleteObject } = await import('https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js');
+    if (fbDeleteObject) {
+      await fbDeleteObject(fileRef);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[Photo Utils] Could not delete file:', err);
+  }
+  return false;
+}
 
 /**
  * Optimize image before upload (resize if too large, compress)
@@ -152,8 +167,8 @@ export async function cleanupOldArchives(userId, daysOld = 30) {
       if (match) {
         const timestamp = parseInt(match[1]);
         if (timestamp < cutoffTime) {
-          await deleteObject(item);
-          deletedCount++;
+          const deleted = await safeDeleteObject(item);
+          if (deleted) deletedCount++;
         }
       }
     }
