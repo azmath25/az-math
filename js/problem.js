@@ -1,21 +1,20 @@
-// js/problem.js
+// js/problem.js - Enhanced with proper image alignment, sizing, and captions
 import { db, doc, getDoc } from "./firebase.js";
 
 let problemData = null;
 let solutionsVisible = false;
 
-// Clean HTML but preserve formatting and fix math delimiters
+/**
+ * Clean HTML but preserve formatting and fix math delimiters
+ */
 function cleanHtmlForMath(html) {
   if (!html) return "";
   
-  // Create a temporary element to parse HTML
   const temp = document.createElement('div');
   temp.innerHTML = html;
   
-  // List of allowed formatting tags to preserve
   const allowedTags = ['strong', 'b', 'em', 'i', 'u', 'br', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
   
-  // Recursively clean the HTML
   function cleanNode(node) {
     if (node.nodeType === Node.TEXT_NODE) {
       return node.textContent;
@@ -24,18 +23,15 @@ function cleanHtmlForMath(html) {
     if (node.nodeType === Node.ELEMENT_NODE) {
       const tagName = node.tagName.toLowerCase();
       
-      // Process child nodes
       let childrenHtml = '';
       for (let child of node.childNodes) {
         childrenHtml += cleanNode(child);
       }
       
-      // Keep allowed formatting tags
       if (allowedTags.includes(tagName)) {
         return `<${tagName}>${childrenHtml}</${tagName}>`;
       }
       
-      // For other tags (like span), just return the content without the tag
       return childrenHtml;
     }
     
@@ -43,25 +39,22 @@ function cleanHtmlForMath(html) {
   }
   
   const cleaned = cleanNode(temp);
-  
-  // Fix any double spaces or excessive whitespace
   return cleaned.replace(/\s+/g, ' ').trim();
 }
 
-// Render a content block
+/**
+ * Render a content block with enhanced image support
+ */
 function renderBlock(block) {
   if (!block) return "";
   
   switch (block.type) {
     case "text":
-      // Clean HTML and preserve math notation
       const content = cleanHtmlForMath(block.content || "");
       return `<div class="block-text">${content}</div>`;
     
     case "image":
-      return `<div class="block-image">
-        <img src="${escapeHtml(block.url || "")}" alt="Problem image" style="max-width:100%; border-radius: 8px; margin: 1rem 0;" />
-      </div>`;
+      return renderImageBlock(block);
     
     case "problem":
       return `<div class="ref-block">
@@ -80,34 +73,62 @@ function renderBlock(block) {
   }
 }
 
-// Escape HTML (only for user-generated content that should be escaped)
+/**
+ * Render image block with alignment, size, and caption
+ */
+function renderImageBlock(block) {
+  const alignment = block.alignment || 'center';
+  const size = block.size || 'medium';
+  const caption = block.caption || '';
+  const alt = block.alt || 'Problem image';
+  const url = block.url || '';
+
+  if (!url) return '';
+
+  return `
+    <div class="image-block-wrapper image-alignment-${alignment} image-size-${size}">
+      <img src="${escapeHtml(url)}" 
+           alt="${escapeHtml(alt)}" 
+           class="problem-image" 
+           loading="lazy"
+           onerror="this.parentElement.style.display='none'; console.error('Failed to load image:', '${escapeHtml(url)}');" />
+      ${caption ? `<div class="image-caption">${escapeHtml(caption)}</div>` : ''}
+    </div>
+  `;
+}
+
+/**
+ * Escape HTML
+ */
 function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
 }
 
-// Typeset MathJax - CSP compliant version
+/**
+ * Typeset MathJax - CSP compliant version
+ */
 function typesetMath(container) {
   if (!container) {
     console.warn("typesetMath called with no container");
     return;
   }
   
-  // Use Promise-based approach that's CSP compliant
   if (window.MathJax && window.MathJax.typesetPromise) {
     window.MathJax.typesetPromise([container]).catch(err => {
       console.error("MathJax error:", err);
     });
   } else if (window.MathJax && window.MathJax.typeset) {
-    // Fallback to synchronous typeset
     window.MathJax.typeset([container]);
   } else {
     console.warn("MathJax not available yet");
   }
 }
 
-// Render problem statement with MathJax
+/**
+ * Render problem statement with MathJax
+ */
 function renderStatement() {
   const statementContainer = document.getElementById("problem-statement");
   
@@ -123,10 +144,11 @@ function renderStatement() {
       statementContainer.insertAdjacentHTML("beforeend", renderBlock(block));
     });
     
-    // Use requestAnimationFrame instead of setTimeout (CSP compliant)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         typesetMath(statementContainer);
+        // Enable lazy loading for images
+        enableLazyLoading(statementContainer);
       });
     });
   } else {
@@ -134,7 +156,43 @@ function renderStatement() {
   }
 }
 
-// Wait for MathJax using Promises (CSP compliant)
+/**
+ * Enable lazy loading for images using Intersection Observer
+ */
+function enableLazyLoading(container) {
+  if (!('IntersectionObserver' in window)) {
+    // Fallback: load all images immediately
+    return;
+  }
+
+  const images = container.querySelectorAll('img[loading="lazy"]');
+  
+  const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        
+        // Add fade-in animation
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.3s ease';
+        
+        img.addEventListener('load', () => {
+          img.style.opacity = '1';
+        });
+        
+        observer.unobserve(img);
+      }
+    });
+  }, {
+    rootMargin: '50px' // Start loading 50px before image enters viewport
+  });
+
+  images.forEach(img => imageObserver.observe(img));
+}
+
+/**
+ * Wait for MathJax using Promises (CSP compliant)
+ */
 function waitForMathJax() {
   return new Promise((resolve) => {
     if (window.MathJax && (window.MathJax.typesetPromise || window.MathJax.typeset)) {
@@ -142,9 +200,8 @@ function waitForMathJax() {
       return;
     }
     
-    // Poll for MathJax using requestAnimationFrame (CSP compliant)
     let attempts = 0;
-    const maxAttempts = 100; // 100 frames ~ 1.7 seconds at 60fps
+    const maxAttempts = 100;
     
     function checkMathJax() {
       attempts++;
@@ -155,7 +212,7 @@ function waitForMathJax() {
         requestAnimationFrame(checkMathJax);
       } else {
         console.warn("MathJax not loaded after waiting");
-        resolve(); // Resolve anyway to show content
+        resolve();
       }
     }
     
@@ -163,7 +220,9 @@ function waitForMathJax() {
   });
 }
 
-// Load and display problem
+/**
+ * Load and display problem
+ */
 async function loadProblem() {
   const params = new URLSearchParams(window.location.search);
   const problemId = params.get("id");
@@ -236,7 +295,9 @@ async function loadProblem() {
   }
 }
 
-// Toggle solutions visibility
+/**
+ * Toggle solutions visibility
+ */
 function toggleSolutions() {
   const solutionsContainer = document.getElementById("solutions-container");
   const toggleButton = document.getElementById("toggle-solutions") || document.getElementById("show-solutions");
@@ -255,7 +316,7 @@ function toggleSolutions() {
       const solutionDiv = document.createElement("div");
       solutionDiv.className = "solution-block";
       
-      const header = `<h3>Həll ${solution.id || index + 1}</h3>`;
+      const header = `<h3>${solution.title || `Solution ${index + 1}`}</h3>`;
       solutionDiv.innerHTML = header;
       
       if (solution.blocks && solution.blocks.length > 0) {
@@ -271,14 +332,15 @@ function toggleSolutions() {
     
     solutionsContainer.style.display = "block";
     if (toggleButton) {
-      toggleButton.textContent = "▲";
+      toggleButton.textContent = "▲ Hide Solutions";
     }
     solutionsVisible = true;
     
-    // Typeset MathJax for solutions using requestAnimationFrame
+    // Typeset MathJax for solutions
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         typesetMath(solutionsContainer);
+        enableLazyLoading(solutionsContainer);
       });
     });
   } else {
@@ -291,7 +353,9 @@ function toggleSolutions() {
   }
 }
 
-// Initialize
+/**
+ * Initialize
+ */
 document.addEventListener("DOMContentLoaded", () => {
   loadProblem();
   
