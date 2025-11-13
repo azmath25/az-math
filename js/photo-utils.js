@@ -746,7 +746,7 @@ export function openPhotoUploadModal(options = {}) {
 /**
  * Upload photo blob to Firebase Storage with optimization and archive
  * @param {Blob} blob - Image blob to upload
- * @param {string} path - Storage path
+ * @param {string} path - Storage path (should be just the folder path like "profile_photos/userId")
  * @param {Object} options - Upload options
  * @returns {Promise<string>} Download URL
  */
@@ -759,16 +759,30 @@ export async function uploadPhotoToStorage(blob, path, options = {}) {
       await archiveOldPhoto(currentPhotoURL, userId);
     }
 
-    // Upload new photo
-    const filename = `${path}_${Date.now()}.jpg`;
-    const storageRef = ref(storage, filename);
+    // Create proper filename - path should be folder, we add the filename
+    // For profile: "profile_photos/userId" -> "profile_photos/userId/profile.jpg"
+    // For problems: "problem_images/problemId/blockId" -> "problem_images/problemId/blockId.jpg"
+    
+    let fullPath;
+    if (path.includes('profile_photos')) {
+      // Profile photo: use consistent filename
+      fullPath = `${path}/profile.jpg`;
+    } else {
+      // Problem/other images: add timestamp to avoid cache issues
+      fullPath = `${path}_${Date.now()}.jpg`;
+    }
+    
+    console.log('[Upload] Uploading to path:', fullPath);
+    
+    const storageRef = ref(storage, fullPath);
     
     await uploadBytes(storageRef, blob, {
-      contentType: "image/jpeg"
+      contentType: "image/jpeg",
+      cacheControl: 'public, max-age=31536000' // Cache for 1 year
     });
     
     const downloadURL = await getDownloadURL(storageRef);
-    console.log('[Upload] Successfully uploaded photo:', filename);
+    console.log('[Upload] Successfully uploaded photo:', fullPath);
     return downloadURL;
 
   } catch (err) {
