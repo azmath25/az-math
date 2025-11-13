@@ -1,6 +1,5 @@
 /* ===== EDIT PROBLEM PAGE - ENHANCED WITH IMAGE POSITIONING ===== */
-
-/* ===== Image Block Enhancements ===== */
+/* FIXED: Float clearing moved to containers only */
 
 /* ===== Image Block Enhancements ===== */
 
@@ -159,10 +158,9 @@
 
 /* ===== Preview Mode Image Rendering ===== */
 
-/* Image Block Wrapper - Positioning */
+/* FIXED: Image Block Wrapper - NO clearing on individual wrappers */
 .image-block-wrapper {
   margin: 1.5rem 0;
-  clear: both;
   position: relative;
 }
 
@@ -199,47 +197,41 @@
   margin: 0 0 0 auto;
 }
 
-/* Float Left (Text wraps on right) */
-.image-alignment-float-left {
+/* Float Left (Text wraps on right) - DIRECT IMAGE STYLES */
+.image-float-left {
   float: left;
   margin: 0 2rem 1rem 0;
   max-width: 50%;
 }
 
-.image-alignment-float-left .problem-image {
-  display: block;
-  width: 100%;
-}
-
-/* Float Right (Text wraps on left) */
-.image-alignment-float-right {
+/* Float Right (Text wraps on left) - DIRECT IMAGE STYLES */
+.image-float-right {
   float: right;
   margin: 0 0 1rem 2rem;
   max-width: 50%;
 }
 
-.image-alignment-float-right .problem-image {
-  display: block;
-  width: 100%;
-}
-
 /* Image Sizes */
-.image-size-small .problem-image {
+.image-size-small .problem-image,
+.problem-image.image-size-small {
   max-width: 400px;
   width: 100%;
 }
 
-.image-size-medium .problem-image {
+.image-size-medium .problem-image,
+.problem-image.image-size-medium {
   max-width: 600px;
   width: 100%;
 }
 
-.image-size-large .problem-image {
+.image-size-large .problem-image,
+.problem-image.image-size-large {
   max-width: 800px;
   width: 100%;
 }
 
-.image-size-full .problem-image {
+.image-size-full .problem-image,
+.problem-image.image-size-full {
   max-width: 100%;
   width: 100%;
 }
@@ -269,17 +261,22 @@
 }
 
 .image-alignment-left .image-caption,
-.image-alignment-float-left .image-caption {
+.image-caption.image-float-left {
   text-align: left;
+  clear: left;
 }
 
 .image-alignment-right .image-caption,
-.image-alignment-float-right .image-caption {
+.image-caption.image-float-right {
   text-align: right;
+  clear: right;
 }
 
-/* Clear floats after image blocks */
-.image-block-wrapper::after {
+/* FIXED: Clear floats only at CONTAINER level, not individual wrappers */
+.content-blocks::after,
+.solution-blocks::after,
+#preview-statement::after,
+#preview-solutions::after {
   content: "";
   display: table;
   clear: both;
@@ -660,8 +657,8 @@ textarea:focus-visible {
     min-width: auto;
   }
 
-  .image-alignment-float-left,
-  .image-alignment-float-right {
+  .image-float-left,
+  .image-float-right {
     float: none;
     max-width: 100%;
     margin: 1.5rem 0;
@@ -669,7 +666,10 @@ textarea:focus-visible {
 
   .image-size-small .problem-image,
   .image-size-medium .problem-image,
-  .image-size-large .problem-image {
+  .image-size-large .problem-image,
+  .problem-image.image-size-small,
+  .problem-image.image-size-medium,
+  .problem-image.image-size-large {
     max-width: 100%;
   }
 }

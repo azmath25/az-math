@@ -1,4 +1,4 @@
-// js/edit-problem.js - Enhanced with image positioning, sizing, and clipboard support
+// js/edit-problem.js - FIXED: Now uses shared rendering for preview
 import { db, doc, getDoc, setDoc, serverTimestamp } from "./firebase.js";
 import { populateCategorySelect } from "./categories-utils.js";
 import { createRichTextEditor } from "./rte.js";
@@ -13,6 +13,8 @@ import {
   escapeHtml,
   generateBlockId
 } from "./edit-problem-utils.js";
+// IMPORT SHARED RENDERING
+import { renderBlocks, renderSolutions, typesetMath } from "./render-utils.js";
 
 // Global instances
 const blockRegistry = new BlockRegistry();
@@ -211,7 +213,6 @@ function createImageBlock(block = {
   imageInput.addEventListener('change', async () => {
     const url = imageInput.value.trim();
     if (url) {
-      // Validate URL
       const validation = await validateImageUrl(url);
       if (validation.valid) {
         showImagePreview(url);
@@ -226,7 +227,6 @@ function createImageBlock(block = {
     }
   });
 
-  // Show image preview in URL mode
   function showImagePreview(url) {
     let previewContainer = urlMode.querySelector('.image-preview-container');
     if (!previewContainer) {
@@ -257,9 +257,6 @@ function createImageBlock(block = {
           uploadStatus.style.color = '#f59e0b';
 
           const pid = problemIdInput.value || 'temp';
-          
-          // Path format: problem_images/{problemId}/{blockId}
-          // uploadPhotoToStorage will add timestamp and .jpg extension
           const path = `problem_images/${pid}/${blockId}`;
           
           const downloadURL = await uploadPhotoToStorage(blob, path);
@@ -323,7 +320,6 @@ function createImageBlock(block = {
     uploadBtn.click();
   });
 
-  // Register block with getter for current settings
   blockRegistry.register(blockId, {
     element: wrapper,
     type: 'image',
@@ -566,7 +562,6 @@ function gatherBlocksWithEnhancedImages(container) {
       let blockData;
       
       if (block.type === 'image' && block.getImageData) {
-        // Use the enhanced getter for image blocks
         const imageData = block.getImageData();
         if (imageData.url && imageData.url.trim().length > 0) {
           blockData = {
@@ -716,7 +711,7 @@ async function loadProblem(problemId) {
 }
 
 /**
- * Show preview mode
+ * FIXED: Show preview mode using SHARED RENDERING
  */
 async function showPreview() {
   editorForm.style.display = 'none';
@@ -728,14 +723,8 @@ async function showPreview() {
 
   await new Promise(resolve => setTimeout(resolve, 100));
 
-  if (window.MathJax?.typesetPromise) {
-    try {
-      await window.MathJax.typesetPromise([previewMode]);
-    } catch (err) {
-      console.error('[Preview] MathJax error:', err);
-      showNotification('⚠️ Some math formulas may not have rendered correctly', 'warning', 5000);
-    }
-  }
+  // Typeset math using shared utility
+  await typesetMath(previewMode);
 }
 
 /**
@@ -748,7 +737,7 @@ function hidePreview() {
 }
 
 /**
- * Render problem preview with enhanced image display
+ * FIXED: Render problem preview using SHARED RENDERING
  */
 function renderPreview(data) {
   const title = data.title || `Problem #${data.id}`;
@@ -767,63 +756,13 @@ function renderPreview(data) {
     previewTags.insertAdjacentHTML('beforeend', `<span class="tag">${escapeHtml(tag)}</span>`);
   });
 
+  // Use shared rendering for statement
   const previewStatement = document.getElementById('preview-statement');
-  previewStatement.innerHTML = '';
-  (data.statement || []).forEach(block => {
-    previewStatement.insertAdjacentHTML('beforeend', renderBlockPreview(block));
-  });
+  previewStatement.innerHTML = renderBlocks(data.statement);
 
+  // Use shared rendering for solutions
   const previewSolutions = document.getElementById('preview-solutions');
-  previewSolutions.innerHTML = '';
-
-  (data.solutions || []).forEach((solution, index) => {
-    const solutionTitle = solution.title || `Solution ${index + 1}`;
-    let solutionHtml = `<div class="solution-block"><h3>${escapeHtml(solutionTitle)}</h3>`;
-    
-    (solution.blocks || []).forEach(block => {
-      solutionHtml += renderBlockPreview(block);
-    });
-    
-    solutionHtml += '</div>';
-    previewSolutions.insertAdjacentHTML('beforeend', solutionHtml);
-  });
-}
-
-/**
- * Render block with enhanced image support
- */
-function renderBlockPreview(block) {
-  if (!block) return '';
-
-  switch (block.type) {
-    case 'text':
-      return `<div class="block-text">${block.content || ''}</div>`;
-    
-    case 'image':
-      const alignment = block.alignment || 'center';
-      const size = block.size || 'medium';
-      const caption = block.caption || '';
-      const alt = block.alt || 'Problem image';
-      
-      return `
-        <div class="image-block-wrapper image-alignment-${alignment} image-size-${size}">
-          <img src="${escapeHtml(block.url || '')}" 
-               alt="${escapeHtml(alt)}" 
-               class="problem-image" 
-               loading="lazy" />
-          ${caption ? `<div class="image-caption">${escapeHtml(caption)}</div>` : ''}
-        </div>
-      `;
-    
-    case 'problem':
-      return `<div class="ref-block"><strong>📝 Related Problem:</strong> <a href="../problem.html?id=${escapeHtml(block.problemId || '')}" class="ref-link">Problem #${escapeHtml(block.problemId || '')}</a></div>`;
-    
-    case 'lesson':
-      return `<div class="ref-block"><strong>📚 Related Lesson:</strong> <a href="../lesson.html?id=${escapeHtml(block.lessonId || '')}" class="ref-link">Lesson #${escapeHtml(block.lessonId || '')}</a></div>`;
-    
-    default:
-      return '';
-  }
+  previewSolutions.innerHTML = renderSolutions(data.solutions);
 }
 
 /**
@@ -877,10 +816,9 @@ function restoreDraft(data) {
  */
 function enableClipboardImagePaste() {
   document.addEventListener('paste', async (e) => {
-    // Check if we're in a text editor (RTE)
     const activeElement = document.activeElement;
     if (activeElement && activeElement.classList.contains('rte-editor')) {
-      return; // Let RTE handle it
+      return;
     }
 
     const items = e.clipboardData?.items;
@@ -893,14 +831,11 @@ function enableClipboardImagePaste() {
         const file = item.getAsFile();
         if (!file) continue;
 
-        // Show notification
         showNotification('📋 Image pasted! Creating image block...', 'info', 2000);
 
         try {
-          // Create a new image block
           const imageBlock = createImageBlock();
           
-          // Find the appropriate container (statement or active solution)
           const activeSolution = document.querySelector('.solution-editor:hover, .solution-editor:focus-within');
           const targetContainer = activeSolution 
             ? activeSolution.querySelector('.solution-blocks')
@@ -908,12 +843,10 @@ function enableClipboardImagePaste() {
           
           targetContainer.appendChild(imageBlock);
 
-          // Upload the image
           const reader = new FileReader();
           reader.onload = async (event) => {
             const img = new Image();
             img.onload = async () => {
-              // Create blob from image
               const canvas = document.createElement('canvas');
               canvas.width = img.width;
               canvas.height = img.height;
@@ -930,7 +863,6 @@ function enableClipboardImagePaste() {
                   
                   const downloadURL = await uploadPhotoToStorage(blob, path);
                   
-                  // Update the image block
                   const urlInput = imageBlock.querySelector('.image-url-input');
                   urlInput.value = downloadURL;
                   urlInput.dispatchEvent(new Event('change'));
@@ -962,7 +894,6 @@ function enableClipboardImagePaste() {
  * Initialize editor
  */
 document.addEventListener('DOMContentLoaded', async () => {
-  // Get DOM elements
   problemIdInput = document.getElementById('problem-id');
   titleInput = document.getElementById('problem-title');
   categoryInput = document.getElementById('problem-category');
@@ -977,11 +908,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   editorForm = document.getElementById('editor-form');
   previewMode = document.getElementById('preview-mode');
 
-  // Add button spinners
   saveDraftBtn.innerHTML = '<span class="btn-text">💾 Save as Draft</span><span class="btn-spinner" style="display:none;">⏳</span>';
   publishBtn.innerHTML = '<span class="btn-text">✅ Publish</span><span class="btn-spinner" style="display:none;">⏳</span>';
 
-  // Get problem ID from URL
   const params = new URLSearchParams(window.location.search);
   currentProblemId = params.get('id');
 
@@ -990,10 +919,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     problemIdInput.readOnly = true;
   }
 
-  // Load categories
   await populateCategorySelect(categoryInput);
 
-  // Setup statement block buttons
   document.getElementById('add-text-statement').addEventListener('click', () => {
     statementContainer.appendChild(createTextBlock());
   });
@@ -1010,17 +937,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     statementContainer.appendChild(createLessonRefBlock());
   });
 
-  // Setup solution button
   document.getElementById('add-solution-btn').addEventListener('click', () => {
     const index = solutionsContainer.children.length;
     solutionsContainer.appendChild(createSolutionEditor({}, index));
   });
 
-  // Setup save buttons
   saveDraftBtn.addEventListener('click', () => saveProblem(false));
   publishBtn.addEventListener('click', () => saveProblem(true));
 
-  // Setup preview button
   previewBtn.addEventListener('click', () => {
     if (previewMode.style.display === 'block') {
       hidePreview();
@@ -1029,10 +953,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Enable clipboard paste
   enableClipboardImagePaste();
 
-  // Setup keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
@@ -1040,12 +962,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Load existing problem or check for draft
   if (currentProblemId) {
     await loadProblem(currentProblemId);
   }
 
-  // Initialize auto-saver
   autoSaver = new AutoSaver(currentProblemId || 'new', 30000);
   
   setTimeout(() => {
@@ -1054,13 +974,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   autoSaver.start(() => gatherProblemData());
 
-  console.log('[Init] Enhanced editor initialized successfully with image positioning support');
+  console.log('[Init] Enhanced editor initialized with SHARED RENDERING');
 });
 
-// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
   if (autoSaver) {
     autoSaver.stop();
   }
   blockRegistry.clear();
 });
+
+console.log('[Edit Problem] Module loaded with shared rendering from render-utils.js');
