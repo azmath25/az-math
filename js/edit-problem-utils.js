@@ -1,42 +1,30 @@
 // js/edit-problem-utils.js
-// Utility classes for edit-problem.js - handles block management, auto-save, and validation
+// Utility classes for edit-problem.js - FIXED for enhanced image blocks
 
 import { doc, setDoc } from "./firebase.js";
 
 /**
  * BlockRegistry - Centralized block management with automatic cleanup
- * Prevents memory leaks and provides fallback content retrieval
+ * ENHANCED: Now handles new image properties (alignment, size, caption, alt)
  */
 export class BlockRegistry {
   constructor() {
-    this.blocks = new Map(); // blockId -> { element, rte, type, data }
+    this.blocks = new Map();
   }
 
-  /**
-   * Register a new block
-   */
   register(blockId, blockData) {
     this.blocks.set(blockId, blockData);
     console.log(`[BlockRegistry] Registered block: ${blockId}, type: ${blockData.type}`);
   }
 
-  /**
-   * Get block by ID
-   */
   get(blockId) {
     return this.blocks.get(blockId);
   }
 
-  /**
-   * Check if block exists
-   */
   has(blockId) {
     return this.blocks.has(blockId);
   }
 
-  /**
-   * Remove block and cleanup RTE instance
-   */
   remove(blockId) {
     const block = this.blocks.get(blockId);
     if (block?.rte) {
@@ -50,9 +38,6 @@ export class BlockRegistry {
     this.blocks.delete(blockId);
   }
 
-  /**
-   * Get content from block with fallback strategies
-   */
   getContent(blockId) {
     const block = this.blocks.get(blockId);
     if (!block) {
@@ -60,7 +45,6 @@ export class BlockRegistry {
       return null;
     }
 
-    // Strategy 1: Get from RTE instance
     if (block.rte) {
       try {
         const content = block.rte.getContent();
@@ -71,7 +55,6 @@ export class BlockRegistry {
       }
     }
 
-    // Strategy 2: Get from DOM directly
     if (block.element) {
       const editor = block.element.querySelector('.rte-editor');
       if (editor) {
@@ -85,9 +68,6 @@ export class BlockRegistry {
     return null;
   }
 
-  /**
-   * Get all blocks from a container in order
-   */
   getAllBlocks(container) {
     const blocks = [];
     const blockElements = container.querySelectorAll('.block-editor');
@@ -107,7 +87,6 @@ export class BlockRegistry {
         }
       } else {
         console.warn(`[BlockRegistry] Block not in registry at index ${index}, blockId: ${blockId}`);
-        // Fallback: try to extract from DOM
         const fallbackData = this.extractFromDOM(blockEl);
         if (fallbackData && this.isBlockValid(fallbackData)) {
           blocks.push(fallbackData);
@@ -121,7 +100,7 @@ export class BlockRegistry {
   }
 
   /**
-   * Extract block data based on type
+   * FIXED: Extract block data with enhanced image support
    */
   extractBlockData(block) {
     const blockId = block.element?.dataset.blockId;
@@ -133,8 +112,26 @@ export class BlockRegistry {
           return { type: 'text', content: content || '' };
         
         case 'image':
+          // Use the enhanced getter if available
+          if (block.getImageData) {
+            return { type: 'image', ...block.getImageData() };
+          }
+          
+          // Fallback to manual extraction
           const urlInput = block.element.querySelector('.image-url-input');
-          return { type: 'image', url: urlInput?.value || '' };
+          const captionInput = block.element.querySelector('.image-caption-input');
+          const altInput = block.element.querySelector('.image-alt-input');
+          const activeAlignment = block.element.querySelector('.alignment-btn.active');
+          const activeSize = block.element.querySelector('.size-btn.active');
+          
+          return { 
+            type: 'image', 
+            url: urlInput?.value || '',
+            alignment: activeAlignment?.dataset.align || 'center',
+            size: activeSize?.dataset.size || 'medium',
+            caption: captionInput?.value || '',
+            alt: altInput?.value || ''
+          };
         
         case 'problem':
           const problemInput = block.element.querySelector('.block-input');
@@ -155,7 +152,7 @@ export class BlockRegistry {
   }
 
   /**
-   * Fallback: Extract block data directly from DOM element
+   * FIXED: Extract from DOM with enhanced image support
    */
   extractFromDOM(blockEl) {
     const header = blockEl.querySelector('.block-header span')?.textContent || '';
@@ -163,12 +160,27 @@ export class BlockRegistry {
     if (header.includes('Text')) {
       const editor = blockEl.querySelector('.rte-editor');
       return { type: 'text', content: editor?.innerHTML || '' };
+      
     } else if (header.includes('Image')) {
-      const input = blockEl.querySelector('.image-url-input, .block-input');
-      return { type: 'image', url: input?.value || '' };
+      const urlInput = blockEl.querySelector('.image-url-input');
+      const captionInput = blockEl.querySelector('.image-caption-input');
+      const altInput = blockEl.querySelector('.image-alt-input');
+      const activeAlignment = blockEl.querySelector('.alignment-btn.active');
+      const activeSize = blockEl.querySelector('.size-btn.active');
+      
+      return { 
+        type: 'image', 
+        url: urlInput?.value || '',
+        alignment: activeAlignment?.dataset.align || 'center',
+        size: activeSize?.dataset.size || 'medium',
+        caption: captionInput?.value || '',
+        alt: altInput?.value || ''
+      };
+      
     } else if (header.includes('Problem')) {
       const input = blockEl.querySelector('.block-input');
       return { type: 'problem', problemId: input?.value || '' };
+      
     } else if (header.includes('Lesson')) {
       const input = blockEl.querySelector('.block-input');
       return { type: 'lesson', lessonId: input?.value || '' };
@@ -177,9 +189,6 @@ export class BlockRegistry {
     return null;
   }
 
-  /**
-   * Validate that a block has meaningful content
-   */
   isBlockValid(block) {
     if (!block) return false;
 
@@ -202,9 +211,6 @@ export class BlockRegistry {
     }
   }
 
-  /**
-   * Clear all blocks (for cleanup)
-   */
   clear() {
     this.blocks.forEach((block, blockId) => {
       if (block.rte) {
@@ -219,9 +225,6 @@ export class BlockRegistry {
     console.log('[BlockRegistry] Cleared all blocks');
   }
 
-  /**
-   * Get statistics
-   */
   getStats() {
     return {
       total: this.blocks.size,
@@ -245,11 +248,8 @@ export class AutoSaver {
     this.lastSaveTime = null;
   }
 
-  /**
-   * Start auto-saving
-   */
   start(getDataFn) {
-    this.stop(); // Clear any existing timer
+    this.stop();
     
     console.log(`[AutoSaver] Started for problem ${this.problemId}, interval: ${this.interval}ms`);
     
@@ -263,9 +263,6 @@ export class AutoSaver {
     }, this.interval);
   }
 
-  /**
-   * Stop auto-saving
-   */
   stop() {
     if (this.timerId) {
       clearInterval(this.timerId);
@@ -274,9 +271,6 @@ export class AutoSaver {
     }
   }
 
-  /**
-   * Save draft to localStorage
-   */
   saveDraft(data) {
     try {
       const draft = {
@@ -294,16 +288,12 @@ export class AutoSaver {
     } catch (err) {
       console.warn('[AutoSaver] Failed to save draft:', err);
       
-      // Handle quota exceeded
       if (err.name === 'QuotaExceededError') {
         this.clearOldDrafts();
       }
     }
   }
 
-  /**
-   * Load draft from localStorage
-   */
   loadDraft() {
     try {
       const saved = localStorage.getItem(this.storageKey);
@@ -318,17 +308,11 @@ export class AutoSaver {
     return null;
   }
 
-  /**
-   * Check if draft exists and is newer than server version
-   */
   hasDraft() {
     const draft = this.loadDraft();
     return draft !== null;
   }
 
-  /**
-   * Get draft age in milliseconds
-   */
   getDraftAge() {
     const draft = this.loadDraft();
     if (draft) {
@@ -337,9 +321,6 @@ export class AutoSaver {
     return null;
   }
 
-  /**
-   * Format draft age for display
-   */
   formatDraftAge() {
     const age = this.getDraftAge();
     if (!age) return null;
@@ -354,22 +335,15 @@ export class AutoSaver {
     return 'just now';
   }
 
-  /**
-   * Clear draft from localStorage
-   */
   clearDraft() {
     localStorage.removeItem(this.storageKey);
     console.log('[AutoSaver] Draft cleared');
   }
 
-  /**
-   * Clear old drafts to free space
-   */
   clearOldDrafts() {
     const keys = Object.keys(localStorage);
     const draftKeys = keys.filter(k => k.startsWith('draft_problem_'));
     
-    // Sort by age and remove oldest
     const drafts = draftKeys.map(key => {
       try {
         const data = JSON.parse(localStorage.getItem(key));
@@ -379,7 +353,6 @@ export class AutoSaver {
       }
     }).sort((a, b) => a.timestamp - b.timestamp);
 
-    // Remove oldest half
     const toRemove = Math.ceil(drafts.length / 2);
     for (let i = 0; i < toRemove; i++) {
       localStorage.removeItem(drafts[i].key);
@@ -388,9 +361,6 @@ export class AutoSaver {
     console.log(`[AutoSaver] Cleared ${toRemove} old drafts`);
   }
 
-  /**
-   * Show auto-save indicator
-   */
   showAutoSaveIndicator() {
     const indicator = document.getElementById('autosave-indicator');
     if (!indicator) return;
@@ -407,6 +377,7 @@ export class AutoSaver {
 
 /**
  * ProblemValidator - Validates problem data before save
+ * ENHANCED: Now validates new image properties
  */
 export class ProblemValidator {
   constructor() {
@@ -414,9 +385,6 @@ export class ProblemValidator {
     this.warnings = [];
   }
 
-  /**
-   * Validate problem data
-   */
   validate(data) {
     this.errors = [];
     this.warnings = [];
@@ -433,9 +401,6 @@ export class ProblemValidator {
     return this.errors.length === 0;
   }
 
-  /**
-   * Validate problem ID
-   */
   validateId(id) {
     if (!id) {
       this.errors.push('Problem ID is required');
@@ -448,27 +413,18 @@ export class ProblemValidator {
     }
   }
 
-  /**
-   * Validate title
-   */
   validateTitle(title) {
     if (title && title.length > 200) {
       this.warnings.push('Title is very long (>200 characters)');
     }
   }
 
-  /**
-   * Validate category
-   */
   validateCategory(category) {
     if (!category || category.trim() === '') {
       this.errors.push('Please select a category');
     }
   }
 
-  /**
-   * Validate difficulty
-   */
   validateDifficulty(difficulty) {
     const validDifficulties = ['Easy', 'Medium', 'Hard'];
     if (!validDifficulties.includes(difficulty)) {
@@ -476,16 +432,12 @@ export class ProblemValidator {
     }
   }
 
-  /**
-   * Validate statement blocks
-   */
   validateStatement(statement) {
     if (!statement || statement.length === 0) {
       this.errors.push('Problem statement cannot be empty');
       return;
     }
 
-    // Check if at least one block has content
     const hasContent = statement.some(block => {
       if (block.type === 'text') {
         const stripped = block.content.replace(/<[^>]*>/g, '').trim();
@@ -498,7 +450,6 @@ export class ProblemValidator {
       this.errors.push('Problem statement must have at least one non-empty block');
     }
 
-    // Validate individual blocks
     statement.forEach((block, idx) => {
       if (block.type === 'text') {
         const stripped = block.content.replace(/<[^>]*>/g, '').trim();
@@ -513,9 +464,6 @@ export class ProblemValidator {
     });
   }
 
-  /**
-   * Validate solutions
-   */
   validateSolutions(solutions) {
     if (!solutions || solutions.length === 0) {
       this.warnings.push('Problem has no solutions');
@@ -529,9 +477,6 @@ export class ProblemValidator {
     });
   }
 
-  /**
-   * Validate tags
-   */
   validateTags(tags) {
     if (tags && tags.length > 20) {
       this.warnings.push('Too many tags (>20), consider reducing');
@@ -539,21 +484,31 @@ export class ProblemValidator {
   }
 
   /**
-   * Validate image URLs throughout the problem
+   * ENHANCED: Validate image URLs with new properties
    */
   validateImageUrls(data) {
-    // Check statement images
     if (data.statement) {
       data.statement.forEach((block, idx) => {
         if (block.type === 'image' && block.url) {
           if (!this.isValidImageUrl(block.url)) {
             this.errors.push(`Statement image ${idx + 1}: URL does not point to a valid image`);
           }
+          
+          // Validate alignment
+          const validAlignments = ['left', 'center', 'right', 'float-left', 'float-right'];
+          if (block.alignment && !validAlignments.includes(block.alignment)) {
+            this.warnings.push(`Statement image ${idx + 1}: Invalid alignment "${block.alignment}"`);
+          }
+          
+          // Validate size
+          const validSizes = ['small', 'medium', 'large', 'full'];
+          if (block.size && !validSizes.includes(block.size)) {
+            this.warnings.push(`Statement image ${idx + 1}: Invalid size "${block.size}"`);
+          }
         }
       });
     }
 
-    // Check solution images
     if (data.solutions) {
       data.solutions.forEach((solution, solIdx) => {
         if (solution.blocks) {
@@ -569,9 +524,6 @@ export class ProblemValidator {
     }
   }
 
-  /**
-   * Check if URL is valid
-   */
   isValidUrl(url) {
     try {
       new URL(url);
@@ -581,9 +533,6 @@ export class ProblemValidator {
     }
   }
 
-  /**
-   * Check if URL points to an image
-   */
   isValidImageUrl(url) {
     if (!this.isValidUrl(url)) return false;
 
@@ -598,37 +547,22 @@ export class ProblemValidator {
     }
   }
 
-  /**
-   * Get all errors
-   */
   getErrors() {
     return this.errors;
   }
 
-  /**
-   * Get all warnings
-   */
   getWarnings() {
     return this.warnings;
   }
 
-  /**
-   * Check if there are any errors
-   */
   hasErrors() {
     return this.errors.length > 0;
   }
 
-  /**
-   * Check if there are any warnings
-   */
   hasWarnings() {
     return this.warnings.length > 0;
   }
 
-  /**
-   * Show errors in an alert
-   */
   showErrors() {
     if (this.errors.length === 0) return;
 
@@ -636,9 +570,6 @@ export class ProblemValidator {
     alert(`Please fix the following errors:\n\n${errorList}`);
   }
 
-  /**
-   * Show warnings in a confirm dialog
-   */
   showWarnings() {
     if (this.warnings.length === 0) return true;
 
@@ -647,9 +578,6 @@ export class ProblemValidator {
   }
 }
 
-/**
- * Show a toast notification
- */
 export function showNotification(message, type = 'info', duration = 3000) {
   const notification = document.createElement('div');
   notification.className = `notification notification-${type}`;
@@ -677,7 +605,6 @@ export function showNotification(message, type = 'info', duration = 3000) {
     max-width: 400px;
   `;
 
-  // Add animation styles if not already present
   if (!document.getElementById('notification-styles')) {
     const style = document.createElement('style');
     style.id = 'notification-styles';
@@ -714,9 +641,6 @@ export function showNotification(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
-/**
- * Show a loading overlay
- */
 export function showLoadingOverlay(message = 'Loading...') {
   const overlay = document.createElement('div');
   overlay.id = 'loading-overlay';
@@ -755,7 +679,6 @@ export function showLoadingOverlay(message = 'Loading...') {
     </div>
   `;
 
-  // Add spin animation if not present
   if (!document.getElementById('spin-animation')) {
     const style = document.createElement('style');
     style.id = 'spin-animation';
@@ -771,27 +694,18 @@ export function showLoadingOverlay(message = 'Loading...') {
   return overlay;
 }
 
-/**
- * Hide loading overlay
- */
 export function hideLoadingOverlay(overlay) {
   if (overlay && overlay.parentNode) {
     overlay.remove();
   }
 }
 
-/**
- * Escape HTML to prevent XSS
- */
 export function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
-/**
- * Generate unique block ID
- */
 export function generateBlockId() {
   return `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
