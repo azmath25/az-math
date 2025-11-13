@@ -257,7 +257,11 @@ function createImageBlock(block = {
           uploadStatus.style.color = '#f59e0b';
 
           const pid = problemIdInput.value || 'temp';
+          
+          // Path format: problem_images/{problemId}/{blockId}
+          // uploadPhotoToStorage will add timestamp and .jpg extension
           const path = `problem_images/${pid}/${blockId}`;
+          
           const downloadURL = await uploadPhotoToStorage(blob, path);
 
           imageInput.value = downloadURL;
