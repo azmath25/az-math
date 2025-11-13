@@ -759,34 +759,38 @@ export async function uploadPhotoToStorage(blob, path, options = {}) {
       await archiveOldPhoto(currentPhotoURL, userId);
     }
 
-    // Create proper filename - path should be folder, we add the filename
-    // For profile: "profile_photos/userId" -> "profile_photos/userId/profile.jpg"
-    // For problems: "problem_images/problemId/blockId" -> "problem_images/problemId/blockId.jpg"
-    
+    // Create proper filename
     let fullPath;
-    if (path.includes('profile_photos')) {
-      // Profile photo: use consistent filename
+    
+    // Check if path already includes a filename extension
+    if (path.endsWith('.jpg') || path.endsWith('.png') || path.endsWith('.jpeg')) {
+      // Path already has filename, use as-is
+      fullPath = path;
+    } else if (path.includes('profile_photos')) {
+      // Profile photo: use consistent filename "profile.jpg"
       fullPath = `${path}/profile.jpg`;
     } else {
-      // Problem/other images: add timestamp to avoid cache issues
+      // Problem/other images: add timestamp
       fullPath = `${path}_${Date.now()}.jpg`;
     }
     
-    console.log('[Upload] Uploading to path:', fullPath);
+    console.log('[Upload] Full path for upload:', fullPath);
     
     const storageRef = ref(storage, fullPath);
     
     await uploadBytes(storageRef, blob, {
       contentType: "image/jpeg",
-      cacheControl: 'public, max-age=31536000' // Cache for 1 year
+      cacheControl: 'public, max-age=31536000'
     });
     
     const downloadURL = await getDownloadURL(storageRef);
-    console.log('[Upload] Successfully uploaded photo:', fullPath);
+    console.log('[Upload] Successfully uploaded photo to:', fullPath);
+    console.log('[Upload] Download URL:', downloadURL);
     return downloadURL;
 
   } catch (err) {
     console.error('[Upload] Error uploading photo:', err);
+    console.error('[Upload] Attempted path:', path);
     throw new Error("Failed to upload photo: " + err.message);
   }
 }
