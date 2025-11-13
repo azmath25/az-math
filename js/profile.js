@@ -91,9 +91,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Step 2: Upload new photo (70%)
             showPhotoUploadProgress(40, 'Uploading new photo...');
+            
+            // IMPORTANT: Path should be just the folder, not include filename
+            // uploadPhotoToStorage will add the filename
             const photoURL = await uploadPhotoToStorage(
               blob, 
-              `profile_photos/${currentUser.uid}`,
+              `profile_photos/${currentUser.uid}`, // Just the folder path
               {
                 currentPhotoURL: currentUser.photoURL,
                 userId: currentUser.uid
