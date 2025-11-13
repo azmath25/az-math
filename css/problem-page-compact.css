@@ -133,6 +133,7 @@
 
 .content-blocks-compact p {
   margin: 8px 0;
+  line-height: 1.7;
 }
 
 .content-blocks-compact img {
@@ -145,19 +146,71 @@
 /* FIXED: Float styles for direct images */
 .content-blocks-compact .image-float-left {
   float: left;
-  margin: 0 2rem 1rem 0;
-  max-width: 50%;
+  margin: 0.5rem 1.5rem 1rem 0;
+  max-width: 45%;
+  display: block;
 }
 
 .content-blocks-compact .image-float-right {
   float: right;
-  margin: 0 0 1rem 2rem;
-  max-width: 50%;
+  margin: 0.5rem 0 1rem 1.5rem;
+  max-width: 45%;
+  display: block;
+}
+
+/* Caption for float images */
+.content-blocks-compact .image-caption-float {
+  display: block;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #64748b;
+  font-style: italic;
+  line-height: 1.5;
+  clear: none;
+}
+
+.content-blocks-compact .image-caption-float.image-float-left {
+  float: left;
+  clear: left;
+  margin-right: 1.5rem;
+  max-width: 45%;
+  text-align: left;
+}
+
+.content-blocks-compact .image-caption-float.image-float-right {
+  float: right;
+  clear: right;
+  margin-left: 1.5rem;
+  max-width: 45%;
+  text-align: right;
+}
+
+/* Image sizes for floats - smaller percentages in compact view */
+.content-blocks-compact .image-float-left.image-size-small,
+.content-blocks-compact .image-float-right.image-size-small {
+  max-width: 30%;
+}
+
+.content-blocks-compact .image-float-left.image-size-medium,
+.content-blocks-compact .image-float-right.image-size-medium {
+  max-width: 45%;
+}
+
+.content-blocks-compact .image-float-left.image-size-large,
+.content-blocks-compact .image-float-right.image-size-large {
+  max-width: 60%;
+}
+
+.content-blocks-compact .image-float-left.image-size-full,
+.content-blocks-compact .image-float-right.image-size-full {
+  max-width: 70%;
 }
 
 /* FIXED: Clear floats only at CONTAINER level */
 .content-blocks-compact::after,
-.solutions-compact::after {
+.solutions-compact::after,
+.solution-block::after {
   content: "";
   display: table;
   clear: both;
@@ -314,12 +367,29 @@
     text-align: center;
   }
 
-  /* FIXED: Disable floats on mobile */
+  /* FIXED: Disable floats on mobile - force full width */
   .content-blocks-compact .image-float-left,
   .content-blocks-compact .image-float-right {
-    float: none;
-    max-width: 100%;
-    margin: 1rem 0;
+    float: none !important;
+    max-width: 100% !important;
+    margin: 1rem 0 !important;
+    display: block;
+  }
+
+  .content-blocks-compact .image-caption-float {
+    float: none !important;
+    max-width: 100% !important;
+    margin: 0.5rem 0 1rem !important;
+    clear: both;
+    text-align: center !important;
+  }
+
+  /* Reset all image sizes on mobile */
+  .content-blocks-compact img,
+  .content-blocks-compact .image-size-small,
+  .content-blocks-compact .image-size-medium,
+  .content-blocks-compact .image-size-large {
+    max-width: 100% !important;
   }
 
   /* Math scaling for mobile */
