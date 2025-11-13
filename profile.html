@@ -28,6 +28,7 @@
       const nameEdit = document.getElementById("name-edit");
       const nameInput = document.getElementById("name-input");
       const changePhotoBtn = document.getElementById("change-photo-btn");
+      const deletePhotoBtn = document.getElementById("delete-photo-btn");
       const photoContainer = document.getElementById("photo-container");
 
       let currentUser = null;
@@ -63,6 +64,10 @@
 
         if (user.photoURL) {
           userPhoto.src = user.photoURL;
+          deletePhotoBtn.style.display = "inline-block";
+        } else {
+          userPhoto.src = "assets/img/defaultprofile.png";
+          deletePhotoBtn.style.display = "none";
         }
       });
 
@@ -143,6 +148,7 @@
               });
               
               userPhoto.src = photoURL;
+              deletePhotoBtn.style.display = "inline-block";
               
               const headerPhoto = document.getElementById("profile-photo");
               if (headerPhoto) {
@@ -167,6 +173,48 @@
       photoContainer.addEventListener("click", () => {
         if (currentUser) {
           changePhotoBtn.click();
+        }
+      });
+
+      deletePhotoBtn.addEventListener("click", async () => {
+        if (!currentUser) {
+          alert("Please login first");
+          return;
+        }
+
+        if (!currentUser.photoURL) {
+          alert("No profile photo to delete");
+          return;
+        }
+
+        const confirmed = confirm("Are you sure you want to remove your profile photo?");
+        if (!confirmed) return;
+
+        try {
+          deletePhotoBtn.disabled = true;
+          deletePhotoBtn.textContent = "Removing...";
+
+          // Remove photoURL from Firestore
+          await updateDoc(doc(db, "Users", currentUser.uid), {
+            photoURL: ""
+          });
+
+          // Reset to default image
+          userPhoto.src = "assets/img/defaultprofile.png";
+          deletePhotoBtn.style.display = "none";
+
+          const headerPhoto = document.getElementById("profile-photo");
+          if (headerPhoto) {
+            headerPhoto.src = "assets/img/defaultprofile.png";
+          }
+
+          alert("✅ Profile photo removed successfully!");
+        } catch (err) {
+          console.error("Error removing photo:", err);
+          alert("❌ Failed to remove photo: " + err.message);
+        } finally {
+          deletePhotoBtn.disabled = false;
+          deletePhotoBtn.textContent = "🗑️ Remove Photo";
         }
       });
     });
@@ -314,6 +362,7 @@
           </div>
         </div>
         <button id="change-photo-btn" class="btn">📷 Change Photo</button>
+        <button id="delete-photo-btn" class="btn btn-delete" style="display: none; margin-top: 0.5rem;">🗑️ Remove Photo</button>
       </div>
 
       <!-- Right column: user info -->
