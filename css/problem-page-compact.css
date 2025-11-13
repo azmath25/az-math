@@ -1,5 +1,6 @@
 /* ===== COMPACT PROBLEM DETAIL PAGE CSS ===== */
 /* Minimal, space-efficient design for problem detail pages */
+/* FIXED: Float clearing moved to container only */
 
 .problem-page-content {
   max-width: 760px;
@@ -139,6 +140,27 @@
   height: auto;
   margin: 12px 0;
   border-radius: 4px;
+}
+
+/* FIXED: Float styles for direct images */
+.content-blocks-compact .image-float-left {
+  float: left;
+  margin: 0 2rem 1rem 0;
+  max-width: 50%;
+}
+
+.content-blocks-compact .image-float-right {
+  float: right;
+  margin: 0 0 1rem 2rem;
+  max-width: 50%;
+}
+
+/* FIXED: Clear floats only at CONTAINER level */
+.content-blocks-compact::after,
+.solutions-compact::after {
+  content: "";
+  display: table;
+  clear: both;
 }
 
 /* Solution blocks */
@@ -290,6 +312,14 @@
   .problem-footer-meta .btn {
     width: 100%;
     text-align: center;
+  }
+
+  /* FIXED: Disable floats on mobile */
+  .content-blocks-compact .image-float-left,
+  .content-blocks-compact .image-float-right {
+    float: none;
+    max-width: 100%;
+    margin: 1rem 0;
   }
 
   /* Math scaling for mobile */
