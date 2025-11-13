@@ -121,12 +121,22 @@
         openPhotoUploadModal({
           currentPhotoURL: currentUser.photoURL || null,
           aspectRatio: 1,
+          cropShape: 'circle',
+          showEffects: true,
           onSave: async (blob) => {
             try {
               changePhotoBtn.disabled = true;
               changePhotoBtn.textContent = "Uploading...";
               
-              const photoURL = await uploadPhotoToStorage(blob, currentUser.uid);
+              // FIXED: Pass the correct path format
+              const photoURL = await uploadPhotoToStorage(
+                blob, 
+                `profile_photos/${currentUser.uid}`,
+                {
+                  currentPhotoURL: currentUser.photoURL,
+                  userId: currentUser.uid
+                }
+              );
               
               await updateDoc(doc(db, "Users", currentUser.uid), {
                 photoURL: photoURL
@@ -139,10 +149,10 @@
                 headerPhoto.src = photoURL;
               }
               
-              alert("Profile photo updated successfully!");
+              alert("✅ Profile photo updated successfully!");
             } catch (err) {
               console.error("Error updating photo:", err);
-              alert("Failed to update photo: " + err.message);
+              alert("❌ Failed to update photo: " + err.message);
             } finally {
               changePhotoBtn.disabled = false;
               changePhotoBtn.textContent = "📷 Change Photo";
@@ -231,7 +241,7 @@
     .profile-field {
       margin-bottom: 1.75rem;
       padding-bottom: 1.75rem;
-      border-bottom: 1px solid #ff0000;
+      border-bottom: 1px solid #e2e8f0;
     }
 
     .profile-field:last-child {
