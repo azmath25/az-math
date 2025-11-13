@@ -200,15 +200,45 @@
 /* Float Left (Text wraps on right) - DIRECT IMAGE STYLES */
 .image-float-left {
   float: left;
-  margin: 0 2rem 1rem 0;
-  max-width: 50%;
+  margin: 0.5rem 2rem 1rem 0;
+  max-width: 45%;
+  display: block;
 }
 
 /* Float Right (Text wraps on left) - DIRECT IMAGE STYLES */
 .image-float-right {
   float: right;
-  margin: 0 0 1rem 2rem;
-  max-width: 50%;
+  margin: 0.5rem 0 1rem 2rem;
+  max-width: 45%;
+  display: block;
+}
+
+/* Caption for float images - also floated */
+.image-caption-float {
+  display: block;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #64748b;
+  font-style: italic;
+  line-height: 1.5;
+  clear: none;
+}
+
+.image-caption-float.image-float-left {
+  float: left;
+  clear: left;
+  margin-right: 2rem;
+  max-width: 45%;
+  text-align: left;
+}
+
+.image-caption-float.image-float-right {
+  float: right;
+  clear: right;
+  margin-left: 2rem;
+  max-width: 45%;
+  text-align: right;
 }
 
 /* Image Sizes */
@@ -236,6 +266,27 @@
   width: 100%;
 }
 
+/* Sizing for float images - relative to container */
+.image-float-left.image-size-small,
+.image-float-right.image-size-small {
+  max-width: 30%;
+}
+
+.image-float-left.image-size-medium,
+.image-float-right.image-size-medium {
+  max-width: 45%;
+}
+
+.image-float-left.image-size-large,
+.image-float-right.image-size-large {
+  max-width: 60%;
+}
+
+.image-float-left.image-size-full,
+.image-float-right.image-size-full {
+  max-width: 70%;
+}
+
 /* Problem Image Styling */
 .problem-image {
   border-radius: 10px;
@@ -260,23 +311,29 @@
   line-height: 1.5;
 }
 
-.image-alignment-left .image-caption,
-.image-caption.image-float-left {
+.image-alignment-left .image-caption {
   text-align: left;
-  clear: left;
 }
 
-.image-alignment-right .image-caption,
-.image-caption.image-float-right {
+.image-alignment-right .image-caption {
   text-align: right;
-  clear: right;
+}
+
+/* Paragraph spacing in flattened structure */
+.content-blocks > p,
+.solution-blocks > p,
+#preview-statement > p,
+#preview-solutions > p {
+  margin: 1rem 0;
+  line-height: 1.7;
 }
 
 /* FIXED: Clear floats only at CONTAINER level, not individual wrappers */
 .content-blocks::after,
 .solution-blocks::after,
 #preview-statement::after,
-#preview-solutions::after {
+#preview-solutions::after,
+.solution-block::after {
   content: "";
   display: table;
   clear: both;
@@ -657,20 +714,31 @@ textarea:focus-visible {
     min-width: auto;
   }
 
+  /* FIXED: Mobile - disable floats, force full width */
   .image-float-left,
   .image-float-right {
-    float: none;
-    max-width: 100%;
-    margin: 1.5rem 0;
+    float: none !important;
+    max-width: 100% !important;
+    margin: 1.5rem 0 !important;
+    display: block;
   }
 
+  .image-caption-float {
+    float: none !important;
+    max-width: 100% !important;
+    margin: 0.5rem 0 1rem !important;
+    clear: both;
+    text-align: center !important;
+  }
+
+  /* Reset image sizes on mobile */
   .image-size-small .problem-image,
   .image-size-medium .problem-image,
   .image-size-large .problem-image,
   .problem-image.image-size-small,
   .problem-image.image-size-medium,
   .problem-image.image-size-large {
-    max-width: 100%;
+    max-width: 100% !important;
   }
 }
 
