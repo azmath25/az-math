@@ -1,22 +1,7 @@
-// js/photo-utils.js - Enhanced photo utilities with archive, optimization, and effects
-// Complete photo utilities with profile fix, archive, optimization, and filters support
+// js/photo-utils.js - Enhanced photo utilities (SIMPLIFIED - no cleanup dependencies)
+// Complete photo utilities with upload, optimization, and effects
 
-import { storage, ref, uploadBytes, getDownloadURL, listAll } from "./firebase.js";
-
-// Helper function to delete object (if deleteObject is available in firebase.js)
-async function safeDeleteObject(fileRef) {
-  try {
-    // Try to dynamically get deleteObject from Firebase SDK
-    const { deleteObject: fbDeleteObject } = await import('https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js');
-    if (fbDeleteObject) {
-      await fbDeleteObject(fileRef);
-      return true;
-    }
-  } catch (err) {
-    console.warn('[Photo Utils] Could not delete file:', err);
-  }
-  return false;
-}
+import { storage, ref, uploadBytes, getDownloadURL } from "./firebase.js";
 
 /**
  * Optimize image before upload (resize if too large, compress)
@@ -95,17 +80,12 @@ export async function optimizeImage(blob, options = {}) {
 }
 
 /**
- * Archive old photo before uploading new one
+ * Archive old photo before uploading new one (SIMPLIFIED - no auto-cleanup)
  * @param {string} currentPhotoURL - URL of current photo to archive
  * @param {string} userId - User ID for organizing archives
- * @param {Object} options - Archive options
+ * @param {Object} options - Archive options (unused for now)
  */
 export async function archiveOldPhoto(currentPhotoURL, userId, options = {}) {
-  const config = {
-    keepArchiveDays: options.keepArchiveDays || 30,
-    maxArchiveSize: options.maxArchiveSize || 10 * 1024 * 1024 // 10MB default
-  };
-
   if (!currentPhotoURL || !currentPhotoURL.includes('firebasestorage.googleapis.com')) {
     console.log('[Archive] No valid photo to archive');
     return null;
@@ -135,50 +115,15 @@ export async function archiveOldPhoto(currentPhotoURL, userId, options = {}) {
     await uploadBytes(archiveRef, blob);
 
     console.log('[Archive] Successfully archived old photo:', archivePath);
-
-    // Cleanup old archives
-    await cleanupOldArchives(userId, config.keepArchiveDays);
+    
+    // Note: Manual cleanup of old archives should be done separately
+    // You can manually delete old archives from Firebase Console if needed
 
     return archivePath;
 
   } catch (err) {
     console.error('[Archive] Failed to archive photo:', err);
     return null;
-  }
-}
-
-/**
- * Delete archived photos older than specified days
- * @param {string} userId - User ID
- * @param {number} daysOld - Delete archives older than this many days
- */
-export async function cleanupOldArchives(userId, daysOld = 30) {
-  try {
-    const archivePath = `profile_photos/${userId}/archive`;
-    const archiveRef = ref(storage, archivePath);
-    
-    const result = await listAll(archiveRef);
-    const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
-    
-    let deletedCount = 0;
-    
-    for (const item of result.items) {
-      const match = item.name.match(/^(\d+)_archived/);
-      if (match) {
-        const timestamp = parseInt(match[1]);
-        if (timestamp < cutoffTime) {
-          const deleted = await safeDeleteObject(item);
-          if (deleted) deletedCount++;
-        }
-      }
-    }
-    
-    console.log(`[Cleanup] Deleted ${deletedCount} old archived photos for user ${userId}`);
-    return deletedCount;
-
-  } catch (err) {
-    console.error('[Cleanup] Error cleaning up archives:', err);
-    return 0;
   }
 }
 
