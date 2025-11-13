@@ -1,7 +1,7 @@
-// js/profile.js
+// js/profile.js - Enhanced with better photo upload UX and progress indicators
 import { onAuthState } from "./auth.js";
 import { db, doc, updateDoc } from "./firebase.js";
-import { openPhotoUploadModal, uploadPhotoToStorage } from "./photo-utils.js";
+import { openPhotoUploadModal, uploadPhotoToStorage, archiveOldPhoto } from "./photo-utils.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const userEmail = document.getElementById("user-email");
@@ -56,6 +56,9 @@ document.addEventListener("DOMContentLoaded", () => {
     setupPhotoUpload();
   });
 
+  /**
+   * Enhanced photo upload with progress indicator and better UX
+   */
   function setupPhotoUpload() {
     if (!userPhoto) return;
 
@@ -73,26 +76,42 @@ document.addEventListener("DOMContentLoaded", () => {
         currentPhotoURL: currentUser.photoURL || null,
         aspectRatio: 1, // Square for profile photos
         cropShape: 'circle', // Circular crop for profile
+        showEffects: true, // Enable brightness/contrast/saturation adjustments
         onSave: async (blob) => {
           try {
-            // Show uploading state
+            // Show loading state on photo
             const originalSrc = userPhoto.src;
-            userPhoto.style.opacity = "0.5";
-            userPhoto.style.pointerEvents = "none";
+            showPhotoUploadProgress(0);
 
-            // Upload to Firebase Storage
-            const photoURL = await uploadPhotoToStorage(blob, `profile_photos/${currentUser.uid}`);
+            // Step 1: Archive old photo if exists (10%)
+            if (currentUser.photoURL) {
+              showPhotoUploadProgress(10, 'Archiving old photo...');
+              await archiveOldPhoto(currentUser.photoURL, currentUser.uid);
+            }
 
-            // Update Firestore user document
+            // Step 2: Upload new photo (70%)
+            showPhotoUploadProgress(40, 'Uploading new photo...');
+            const photoURL = await uploadPhotoToStorage(
+              blob, 
+              `profile_photos/${currentUser.uid}`,
+              {
+                currentPhotoURL: currentUser.photoURL,
+                userId: currentUser.uid
+              }
+            );
+
+            showPhotoUploadProgress(70, 'Updating profile...');
+
+            // Step 3: Update Firestore user document (20%)
             const userDocRef = doc(db, "Users", currentUser.uid);
             await updateDoc(userDocRef, {
               photoURL: photoURL
             });
 
-            // Update the image on the page
+            showPhotoUploadProgress(90, 'Finalizing...');
+
+            // Step 4: Update the image on the page
             userPhoto.src = photoURL;
-            userPhoto.style.opacity = "1";
-            userPhoto.style.pointerEvents = "auto";
 
             // Also update the navbar profile icon if it exists
             const navbarPhoto = document.getElementById("profile-photo");
@@ -100,26 +119,205 @@ document.addEventListener("DOMContentLoaded", () => {
               navbarPhoto.src = photoURL;
             }
 
-            alert("Profile photo updated successfully!");
+            showPhotoUploadProgress(100, 'Complete!');
+
+            // Show success message
+            setTimeout(() => {
+              hidePhotoUploadProgress();
+              showSuccessMessage("✅ Profile photo updated successfully!");
+            }, 500);
 
           } catch (err) {
             console.error("Error updating photo:", err);
-            alert("Failed to update photo: " + err.message);
+            hidePhotoUploadProgress();
+            showErrorMessage("❌ Failed to update photo: " + err.message);
             
-            // Reset on error
-            userPhoto.style.opacity = "1";
-            userPhoto.style.pointerEvents = "auto";
+            // Restore original photo on error
+            userPhoto.src = originalSrc;
           }
         },
         onCancel: () => {
-          // User cancelled, do nothing
+          console.log('Photo upload cancelled');
         }
       });
     });
 
     // Add hover effect styling
+    addPhotoHoverStyles();
+  }
+
+  /**
+   * Show photo upload progress indicator
+   */
+  function showPhotoUploadProgress(percent, message = 'Uploading...') {
+    let progressOverlay = document.getElementById('photo-progress-overlay');
+    
+    if (!progressOverlay) {
+      progressOverlay = document.createElement('div');
+      progressOverlay.id = 'photo-progress-overlay';
+      progressOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+      `;
+      
+      progressOverlay.innerHTML = `
+        <div style="
+          background: white;
+          padding: 2rem;
+          border-radius: 16px;
+          text-align: center;
+          min-width: 300px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        ">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">📸</div>
+          <div id="progress-message" style="font-weight: 600; color: #1f2937; margin-bottom: 1rem;">Uploading...</div>
+          <div style="
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+          ">
+            <div id="progress-bar" style="
+              height: 100%;
+              background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+              width: 0%;
+              transition: width 0.3s ease;
+            "></div>
+          </div>
+          <div id="progress-percent" style="font-size: 0.875rem; color: #6b7280;">0%</div>
+        </div>
+      `;
+      
+      document.body.appendChild(progressOverlay);
+    }
+
+    const progressBar = document.getElementById('progress-bar');
+    const progressPercent = document.getElementById('progress-percent');
+    const progressMessage = document.getElementById('progress-message');
+
+    if (progressBar) progressBar.style.width = percent + '%';
+    if (progressPercent) progressPercent.textContent = Math.round(percent) + '%';
+    if (progressMessage) progressMessage.textContent = message;
+  }
+
+  /**
+   * Hide photo upload progress
+   */
+  function hidePhotoUploadProgress() {
+    const progressOverlay = document.getElementById('photo-progress-overlay');
+    if (progressOverlay) {
+      progressOverlay.style.animation = 'fadeOut 0.3s ease';
+      setTimeout(() => progressOverlay.remove(), 300);
+    }
+  }
+
+  /**
+   * Show success message
+   */
+  function showSuccessMessage(message) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      z-index: 10001;
+      font-weight: 600;
+      animation: slideInRight 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.animation = 'slideOutRight 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  /**
+   * Show error message
+   */
+  function showErrorMessage(message) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      z-index: 10001;
+      font-weight: 600;
+      animation: slideInRight 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.animation = 'slideOutRight 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 5000);
+  }
+
+  /**
+   * Add hover styles for photo
+   */
+  function addPhotoHoverStyles() {
+    if (document.getElementById("profile-photo-hover-styles")) return;
+
     const style = document.createElement("style");
+    style.id = "profile-photo-hover-styles";
     style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      
+      @keyframes slideInRight {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      
+      @keyframes slideOutRight {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+      }
+      
       .profile-photo-large {
         position: relative;
         transition: all 0.3s ease;
@@ -155,9 +353,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     `;
     
-    if (!document.getElementById("profile-photo-hover-styles")) {
-      style.id = "profile-photo-hover-styles";
-      document.head.appendChild(style);
-    }
+    document.head.appendChild(style);
   }
 });
