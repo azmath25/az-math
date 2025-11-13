@@ -2,6 +2,43 @@
 import { storage, ref, uploadBytes, getDownloadURL } from "./firebase.js";
 
 /**
+ * Delete photo from Firebase Storage
+ * @param {string} photoURL - URL of the photo to delete
+ * @returns {Promise<boolean>} Success status
+ */
+export async function deletePhotoFromStorage(photoURL) {
+  if (!photoURL || !photoURL.includes('firebasestorage.googleapis.com')) {
+    console.log('[Delete] No valid photo URL to delete');
+    return false;
+  }
+
+  try {
+    const urlObj = new URL(photoURL);
+    const pathMatch = urlObj.pathname.match(/\/o\/(.+)\?/);
+    if (!pathMatch) {
+      console.warn('[Delete] Could not extract path from URL');
+      return false;
+    }
+
+    const filePath = decodeURIComponent(pathMatch[1]);
+    console.log('[Delete] Deleting photo at path:', filePath);
+
+    const fileRef = ref(storage, filePath);
+    
+    // Import deleteObject from firebase
+    const { deleteObject } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js");
+    await deleteObject(fileRef);
+
+    console.log('[Delete] ✅ Successfully deleted photo:', filePath);
+    return true;
+
+  } catch (err) {
+    console.error('[Delete] Failed to delete photo:', err);
+    return false;
+  }
+}
+
+/**
  * Optimize image before upload (resize if too large, compress)
  */
 export async function optimizeImage(blob, options = {}) {
