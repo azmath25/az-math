@@ -1,13 +1,8 @@
-// js/photo-utils.js - Enhanced photo utilities (SIMPLIFIED - no cleanup dependencies)
-// Complete photo utilities with upload, optimization, and effects
-
+// js/photo-utils.js - FIXED photo upload path handling
 import { storage, ref, uploadBytes, getDownloadURL } from "./firebase.js";
 
 /**
  * Optimize image before upload (resize if too large, compress)
- * @param {Blob} blob - Original image blob
- * @param {Object} options - Optimization options
- * @returns {Promise<Blob>} Optimized image blob
  */
 export async function optimizeImage(blob, options = {}) {
   const config = {
@@ -24,13 +19,11 @@ export async function optimizeImage(blob, options = {}) {
     img.onload = () => {
       URL.revokeObjectURL(url);
 
-      // Check if resizing is needed
       let width = img.width;
       let height = img.height;
       const needsResize = width > config.maxWidth || height > config.maxHeight;
 
       if (needsResize) {
-        // Calculate new dimensions maintaining aspect ratio
         if (width > height) {
           if (width > config.maxWidth) {
             height = Math.round((height * config.maxWidth) / width);
@@ -44,18 +37,15 @@ export async function optimizeImage(blob, options = {}) {
         }
       }
 
-      // Create canvas and draw optimized image
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
 
-      // Use better image smoothing
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Convert to blob
       canvas.toBlob(
         (optimizedBlob) => {
           if (optimizedBlob) {
@@ -80,10 +70,7 @@ export async function optimizeImage(blob, options = {}) {
 }
 
 /**
- * Archive old photo before uploading new one (SIMPLIFIED - no auto-cleanup)
- * @param {string} currentPhotoURL - URL of current photo to archive
- * @param {string} userId - User ID for organizing archives
- * @param {Object} options - Archive options (unused for now)
+ * Archive old photo before uploading new one
  */
 export async function archiveOldPhoto(currentPhotoURL, userId, options = {}) {
   if (!currentPhotoURL || !currentPhotoURL.includes('firebasestorage.googleapis.com')) {
@@ -92,7 +79,6 @@ export async function archiveOldPhoto(currentPhotoURL, userId, options = {}) {
   }
 
   try {
-    // Extract path from URL
     const urlObj = new URL(currentPhotoURL);
     const pathMatch = urlObj.pathname.match(/\/o\/(.+)\?/);
     if (!pathMatch) {
@@ -104,21 +90,15 @@ export async function archiveOldPhoto(currentPhotoURL, userId, options = {}) {
     const timestamp = Date.now();
     const archivePath = `profile_photos/${userId}/archive/${timestamp}_archived.jpg`;
 
-    // Get the old file
     const oldRef = ref(storage, oldPath);
     const oldURL = await getDownloadURL(oldRef);
     const response = await fetch(oldURL);
     const blob = await response.blob();
 
-    // Upload to archive
     const archiveRef = ref(storage, archivePath);
     await uploadBytes(archiveRef, blob);
 
     console.log('[Archive] Successfully archived old photo:', archivePath);
-    
-    // Note: Manual cleanup of old archives should be done separately
-    // You can manually delete old archives from Firebase Console if needed
-
     return archivePath;
 
   } catch (err) {
@@ -129,8 +109,6 @@ export async function archiveOldPhoto(currentPhotoURL, userId, options = {}) {
 
 /**
  * Validate image URL
- * @param {string} url - URL to validate
- * @returns {Promise<Object>} Validation result {valid, width, height, size}
  */
 export async function validateImageUrl(url) {
   return new Promise((resolve) => {
@@ -139,7 +117,6 @@ export async function validateImageUrl(url) {
       return;
     }
 
-    // Check URL format
     try {
       new URL(url);
     } catch {
@@ -147,7 +124,6 @@ export async function validateImageUrl(url) {
       return;
     }
 
-    // Try to load image
     const img = new Image();
     
     img.onload = () => {
@@ -163,7 +139,6 @@ export async function validateImageUrl(url) {
       resolve({ valid: false, error: 'Failed to load image' });
     };
 
-    // Set timeout
     setTimeout(() => {
       if (!img.complete) {
         img.src = '';
@@ -177,9 +152,6 @@ export async function validateImageUrl(url) {
 
 /**
  * Upload multiple photos
- * @param {FileList|Array} files - Files to upload
- * @param {string} basePath - Base storage path
- * @returns {Promise<Array>} Array of download URLs
  */
 export async function uploadMultiplePhotos(files, basePath) {
   const urls = [];
@@ -189,10 +161,7 @@ export async function uploadMultiplePhotos(files, basePath) {
     const file = files[i];
     
     try {
-      // Optimize before upload
       const optimized = await optimizeImage(file);
-      
-      // Upload
       const filename = `${basePath}/${Date.now()}_${i}.jpg`;
       const url = await uploadPhotoToStorage(optimized, filename);
       
@@ -213,8 +182,71 @@ export async function uploadMultiplePhotos(files, basePath) {
 }
 
 /**
+ * FIXED: Upload photo blob to Firebase Storage
+ * @param {Blob} blob - Image blob to upload
+ * @param {string} path - Storage path (folder path like "profile_photos/userId")
+ * @param {Object} options - Upload options
+ * @returns {Promise<string>} Download URL
+ */
+export async function uploadPhotoToStorage(blob, path, options = {}) {
+  try {
+    const { currentPhotoURL, userId } = options;
+
+    console.log('[Upload] Input path:', path);
+    console.log('[Upload] Options:', options);
+
+    // Archive old photo if updating
+    if (currentPhotoURL && userId && path.includes('profile_photos')) {
+      await archiveOldPhoto(currentPhotoURL, userId);
+    }
+
+    // FIXED: Determine the correct full path with filename
+    let fullPath;
+    
+    // Normalize path by removing trailing slashes
+    const cleanPath = path.replace(/\/+$/, '');
+    
+    console.log('[Upload] Clean path:', cleanPath);
+    console.log('[Upload] Path includes profile_photos:', cleanPath.includes('profile_photos'));
+    
+    // Check if path is for profile photos
+    if (cleanPath.includes('profile_photos')) {
+      // Profile photo: always use "profile.jpg" as filename
+      fullPath = `${cleanPath}/profile.jpg`;
+      console.log('[Upload] Profile photo detected, using:', fullPath);
+    } else if (cleanPath.includes('problem_images')) {
+      // Problem images: add timestamp for uniqueness
+      fullPath = `${cleanPath}_${Date.now()}.jpg`;
+      console.log('[Upload] Problem image detected, using:', fullPath);
+    } else {
+      // Default: add timestamp
+      fullPath = `${cleanPath}_${Date.now()}.jpg`;
+      console.log('[Upload] Default path, using:', fullPath);
+    }
+    
+    console.log('[Upload] Final full path for upload:', fullPath);
+    
+    const storageRef = ref(storage, fullPath);
+    
+    await uploadBytes(storageRef, blob, {
+      contentType: "image/jpeg",
+      cacheControl: 'public, max-age=31536000'
+    });
+    
+    const downloadURL = await getDownloadURL(storageRef);
+    console.log('[Upload] ✅ Successfully uploaded photo to:', fullPath);
+    console.log('[Upload] Download URL:', downloadURL);
+    return downloadURL;
+
+  } catch (err) {
+    console.error('[Upload] ❌ Error uploading photo:', err);
+    console.error('[Upload] Attempted path:', path);
+    throw new Error("Failed to upload photo: " + err.message);
+  }
+}
+
+/**
  * Create and show photo upload modal with cropping and effects
- * @param {Object} options - Configuration options
  */
 export function openPhotoUploadModal(options = {}) {
   const {
@@ -435,8 +467,6 @@ export function openPhotoUploadModal(options = {}) {
     drawCheckerboard();
     
     ctx.save();
-    
-    // Apply filters
     ctx.filter = `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100}) saturate(${1 + saturation / 100})`;
     
     if (rotation !== 0) {
@@ -450,7 +480,6 @@ export function openPhotoUploadModal(options = {}) {
     ctx.drawImage(currentImage, 0, 0);
     ctx.restore();
 
-    // Draw overlay
     ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -493,7 +522,7 @@ export function openPhotoUploadModal(options = {}) {
     ctx.shadowBlur = 0;
   }
 
-  // Draw checkerboard
+  // Draw checkerboard background
   function drawCheckerboard() {
     const squareSize = 20;
     const lightColor = "#ffffff";
@@ -545,7 +574,7 @@ export function openPhotoUploadModal(options = {}) {
     drawImage();
   });
 
-  // Buttons
+  // Control buttons
   zoomInBtn.addEventListener("click", () => {
     scale *= 1.2;
     drawImage();
@@ -685,7 +714,6 @@ export function openPhotoUploadModal(options = {}) {
       finalCtx.clip();
     }
 
-    // Apply effects to final image
     finalCtx.filter = `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100}) saturate(${1 + saturation / 100})`;
 
     if (rotation !== 0) {
@@ -701,7 +729,6 @@ export function openPhotoUploadModal(options = {}) {
     );
 
     finalCanvas.toBlob(async (blob) => {
-      // Optimize before saving
       try {
         const optimized = await optimizeImage(blob, { quality: 0.92 });
         closeModal();
@@ -741,58 +768,6 @@ export function openPhotoUploadModal(options = {}) {
       document.removeEventListener("keydown", escapeHandler);
     }
   });
-}
-
-/**
- * Upload photo blob to Firebase Storage with optimization and archive
- * @param {Blob} blob - Image blob to upload
- * @param {string} path - Storage path (should be just the folder path like "profile_photos/userId")
- * @param {Object} options - Upload options
- * @returns {Promise<string>} Download URL
- */
-export async function uploadPhotoToStorage(blob, path, options = {}) {
-  try {
-    const { currentPhotoURL, userId } = options;
-
-    // Archive old photo if updating
-    if (currentPhotoURL && userId && path.includes('profile_photos')) {
-      await archiveOldPhoto(currentPhotoURL, userId);
-    }
-
-    // Create proper filename
-    let fullPath;
-    
-    // Check if path already includes a filename extension
-    if (path.endsWith('.jpg') || path.endsWith('.png') || path.endsWith('.jpeg')) {
-      // Path already has filename, use as-is
-      fullPath = path;
-    } else if (path.includes('profile_photos')) {
-      // Profile photo: use consistent filename "profile.jpg"
-      fullPath = `${path}/profile.jpg`;
-    } else {
-      // Problem/other images: add timestamp
-      fullPath = `${path}_${Date.now()}.jpg`;
-    }
-    
-    console.log('[Upload] Full path for upload:', fullPath);
-    
-    const storageRef = ref(storage, fullPath);
-    
-    await uploadBytes(storageRef, blob, {
-      contentType: "image/jpeg",
-      cacheControl: 'public, max-age=31536000'
-    });
-    
-    const downloadURL = await getDownloadURL(storageRef);
-    console.log('[Upload] Successfully uploaded photo to:', fullPath);
-    console.log('[Upload] Download URL:', downloadURL);
-    return downloadURL;
-
-  } catch (err) {
-    console.error('[Upload] Error uploading photo:', err);
-    console.error('[Upload] Attempted path:', path);
-    throw new Error("Failed to upload photo: " + err.message);
-  }
 }
 
 /**
