@@ -102,16 +102,52 @@ export function waitForMathJax() {
 }
 
 /**
- * Render text block
+ * Extract paragraphs from HTML without wrapper div
+ * Preserves all inner content including math, formatting, lists
+ */
+export function extractParagraphsFromHTML(html) {
+  if (!html) return '';
+  
+  const cleaned = cleanHtmlForMath(html);
+  
+  // Create temp container to parse HTML
+  const temp = document.createElement('div');
+  temp.innerHTML = cleaned;
+  
+  // Extract all child nodes and return their HTML
+  let result = '';
+  for (let child of temp.childNodes) {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      result += child.outerHTML;
+    } else if (child.nodeType === Node.TEXT_NODE) {
+      const text = child.textContent.trim();
+      if (text) {
+        result += `<p>${text}</p>`;
+      }
+    }
+  }
+  
+  return result || '';
+}
+
+/**
+ * Check if alignment is float type
+ */
+export function isFloatingAlignment(alignment) {
+  return alignment === 'float-left' || alignment === 'float-right';
+}
+
+/**
+ * Render text block - FLATTENED (no wrapper div)
  */
 export function renderTextBlock(block) {
-  const content = cleanHtmlForMath(block.content || "");
-  return `<div class="block-text">${content}</div>`;
+  // Extract inner content WITHOUT wrapper div
+  return extractParagraphsFromHTML(block.content || "");
 }
 
 /**
  * Render image block with alignment, size, and caption
- * FIXED: No wrapper for floats - direct image rendering
+ * FLATTENED: Float images render as direct elements
  */
 export function renderImageBlock(block) {
   const alignment = block.alignment || 'center';
@@ -123,20 +159,25 @@ export function renderImageBlock(block) {
   if (!url) return '';
 
   // For floating images, render directly without wrapper
-  // This allows text to wrap around them naturally
-  if (alignment === 'float-left' || alignment === 'float-right') {
+  // This allows text to wrap around them naturally in unified flow
+  if (isFloatingAlignment(alignment)) {
     const floatClass = alignment === 'float-left' ? 'image-float-left' : 'image-float-right';
-    return `
-      <img src="${escapeHtml(url)}" 
-           alt="${escapeHtml(alt)}" 
-           class="problem-image ${floatClass} image-size-${size}" 
-           loading="lazy"
-           onerror="this.style.display='none'; console.error('Failed to load image:', '${escapeHtml(url)}');" />
-      ${caption ? `<div class="image-caption ${floatClass}">${escapeHtml(caption)}</div>` : ''}
-    `;
+    
+    let html = `<img src="${escapeHtml(url)}" 
+         alt="${escapeHtml(alt)}" 
+         class="problem-image ${floatClass} image-size-${size}" 
+         loading="lazy"
+         onerror="this.style.display='none'; console.error('Failed to load image:', '${escapeHtml(url)}');" />`;
+    
+    // Caption for floats - also floated to stay with image
+    if (caption) {
+      html += `<span class="image-caption-float ${floatClass}">${escapeHtml(caption)}</span>`;
+    }
+    
+    return html;
   }
 
-  // For non-floating images, keep wrapper for proper spacing
+  // For non-floating images, keep wrapper for proper spacing and centering
   return `
     <div class="image-block-wrapper image-alignment-${alignment} image-size-${size}">
       <img src="${escapeHtml(url)}" 
@@ -195,15 +236,51 @@ export function renderBlock(block) {
 }
 
 /**
- * Render multiple blocks into a unified content flow
- * This allows floated images to interact with surrounding text
+ * Render multiple blocks into a unified content flow - FLATTENED
+ * This allows floated images to interact with surrounding text naturally
+ * Text blocks are unwrapped, float images are direct elements
  */
 export function renderBlocks(blocks) {
   if (!blocks || blocks.length === 0) {
     return '<p><em>No content available</em></p>';
   }
   
-  return blocks.map(block => renderBlock(block)).join('\n');
+  let html = '';
+  
+  blocks.forEach((block, index) => {
+    if (!block) return;
+    
+    switch (block.type) {
+      case 'text':
+        // Flatten: extract paragraphs without wrapper
+        const paragraphs = extractParagraphsFromHTML(block.content || '');
+        if (paragraphs) {
+          html += paragraphs + '\n';
+        }
+        break;
+      
+      case 'image':
+        // Render image (float = direct element, non-float = wrapper)
+        html += renderImageBlock(block) + '\n';
+        break;
+      
+      case 'problem':
+        // Keep wrapper for references (need separate styling)
+        html += renderProblemRef(block) + '\n';
+        break;
+      
+      case 'lesson':
+        // Keep wrapper for references
+        html += renderLessonRef(block) + '\n';
+        break;
+      
+      default:
+        console.warn("[Render] Unknown block type:", block.type);
+        html += `<div class="block-unknown">Unknown block type: ${block.type}</div>\n`;
+    }
+  });
+  
+  return html || '<p><em>No content available</em></p>';
 }
 
 /**
@@ -247,13 +324,14 @@ export function enableLazyLoading(container) {
 }
 
 /**
- * Render a solution with its blocks
+ * Render a solution with its blocks - FLATTENED
  */
 export function renderSolution(solution, index) {
   const solutionTitle = solution.title || `Solution ${index + 1}`;
   let html = `<div class="solution-block"><h3>${escapeHtml(solutionTitle)}</h3>`;
   
   if (solution.blocks && solution.blocks.length > 0) {
+    // Use flattened rendering for solution blocks too
     html += renderBlocks(solution.blocks);
   } else {
     html += '<p><em>No content</em></p>';
@@ -274,4 +352,4 @@ export function renderSolutions(solutions) {
   return solutions.map((solution, index) => renderSolution(solution, index)).join('\n');
 }
 
-console.log('[Render Utils] Module loaded successfully');
+console.log('[Render Utils] Module loaded successfully - FLATTENED structure for float support');
