@@ -342,6 +342,54 @@ function updateImageUrls(azMathFormat, uploadedImages) {
     });
   }
 }
+let parsedData = null; // Used to hold the result of the parse() operation
+let uploadedImages = {}; // Used to hold image URLs after upload
+
+/**
+ * Main function to parse LaTeX from the textarea and render the preview.
+ * This is attached to the window object to be called by the HTML onclick.
+ */
+window.parseLatexInput = async function() {
+  // 1. Get the LaTeX source from the textarea
+  const latexInput = document.getElementById('latex-input').value;
+  if (!latexInput.trim()) {
+    showStatus('Please paste LaTeX code to parse.', 'error');
+    return;
+  }
+  
+  try {
+    showProgress('Parsing LaTeX with full command support...', 10);
+    
+    // 2. Instantiate and use the globally exposed LaTeXParser
+    const parser = new window.LaTeXParser();
+    parsedData = parser.parse(latexInput);
+    
+    // 3. Convert to Az-Math format and store the source
+    const azMathFormat = parser.toAzMathFormat();
+    azMathFormat.latex.source = latexInput;
+    parsedData.azMathFormat = azMathFormat;
+    
+    showProgress('Rendering preview...', 50);
+    
+    // 4. Update the metadata inputs and render the HTML preview
+    fillMetadataInputs(parsedData.metadata);
+    await renderPreview(azMathFormat);
+    
+    showProgress('Complete!', 100);
+    setTimeout(() => hideProgress(), 500);
+    
+    // 5. Show the preview area
+    document.getElementById('preview-area').style.display = 'block';
+    document.getElementById('preview-area').scrollIntoView({ behavior: 'smooth' });
+    
+    showStatus('✓ LaTeX parsed successfully!', 'success');
+    
+  } catch (error) {
+    console.error('Parsing error:', error);
+    showStatus('Error parsing LaTeX: ' + error.message, 'error');
+    hideProgress();
+  }
+}
 
 /**
  * Show progress bar
