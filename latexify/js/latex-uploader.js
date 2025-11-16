@@ -1,72 +1,3 @@
-// enhanced-latex-uploader.js - Upload handler with full LaTeX support
-
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  serverTimestamp 
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
-
-// Global state
-let parsedData = null;
-let uploadedImages = {};
-
-/**
- * Parse LaTeX text from textarea
- */
-window.parseLatexText = async function() {
-  const latexInput = document.getElementById('latex-input').value.trim();
-  
-  if (!latexInput) {
-    showStatus('Please paste LaTeX code', 'error');
-    return;
-  }
-  
-  try {
-    showProgress('Parsing LaTeX with full command support...', 30);
-    
-    // Use enhanced parser
-    const parser = new window.EnhancedLaTeXParser();
-    parsedData = parser.parse(latexInput);
-    
-    // Convert to Az-Math format
-    const azMathFormat = parser.toAzMathFormat();
-    azMathFormat.latex.source = latexInput;
-    parsedData.azMathFormat = azMathFormat;
-    
-    showProgress('Rendering preview with MathJax...', 60);
-    
-    // Fill metadata inputs
-    fillMetadataInputs(parsedData.metadata);
-    
-    // Render preview
-    await renderPreview(azMathFormat);
-    
-    showProgress('Complete!', 100);
-    setTimeout(() => hideProgress(), 500);
-    
-    // Show preview area
-    document.getElementById('preview-area').style.display = 'block';
-    document.getElementById('preview-area').scrollIntoView({ behavior: 'smooth' });
-    
-    showStatus('✓ LaTeX parsed successfully with full command support!', 'success');
-    
-  } catch (error) {
-    console.error('Parse error:', error);
-    showStatus('Error parsing LaTeX: ' + error.message, 'error');
-    hideProgress();
-  }
 }
 
 /**
@@ -116,7 +47,7 @@ window.handleZipUpload = async function(file) {
     showProgress('Parsing LaTeX with full command support...', 50);
     
     // Parse LaTeX with enhanced parser
-    const parser = new window.EnhancedLaTeXParser();
+    const parser = new window.LaTeXParser();
     parsedData = parser.parse(mainTex);
     
     // Extract images
