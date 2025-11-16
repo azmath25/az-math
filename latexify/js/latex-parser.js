@@ -1,7 +1,7 @@
 // latex-parser.js - Full LaTeX command support
 // Uses hybrid approach: Custom parsing + regex transformations
 
-export class EnhancedLaTeXParser {
+export class LaTeXParser {
   constructor() {
     this.metadata = {
       title: '',
@@ -512,4 +512,4 @@ export class EnhancedLaTeXParser {
 }
 
 // Export for use in other modules
-window.EnhancedLaTeXParser = EnhancedLaTeXParser;
+window.LaTeXParser = EnhancedLaTeXParser;
