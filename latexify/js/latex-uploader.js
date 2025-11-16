@@ -1,8 +1,3 @@
-{
-
-/**
- * Handle ZIP file upload
- */
 window.handleZipUpload = async function(file) {
   if (!file || !file.name.endsWith('.zip')) {
     showStatus('Please upload a ZIP file', 'error');
