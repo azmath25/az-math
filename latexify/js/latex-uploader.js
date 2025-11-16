@@ -1,4 +1,4 @@
-}
+{
 
 /**
  * Handle ZIP file upload
