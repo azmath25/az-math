@@ -144,10 +144,12 @@ x &= \frac{5 \pm \sqrt{(-5)^2-4(1)(6)}}{2(1)} \\
 
 Therefore: $x = 3$ or $x = 2$.
 "></textarea>
-        
+        <!-- Enhanced LaTeX Parser -->
+        <script type="module" src="js/latex-parser.js"></script>
+        <script type="module" src="js/latex-uploader.js"></script>
         <div class="button-group">
           <button class="btn btn-primary" onclick="parse()">
-            🔍 Parse & Preview
+            Parse & Preview
           </button>
           <button class="btn btn-secondary" onclick="clearInput()">
             Clear
@@ -182,7 +184,7 @@ Therefore: $x = 3$ or $x = 2$.
 
     <!-- Preview Area -->
     <div id="preview-area" style="display:none;">
-      <h2>👁️ Preview</h2>
+      <h2> Preview</h2>
       
       <!-- Metadata Preview -->
       <div class="metadata-preview">
