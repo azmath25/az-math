@@ -1,3 +1,6 @@
+// TOP of latex-uploader.js
+import { serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
 window.handleZipUpload = async function(file) {
   if (!file || !file.name.endsWith('.zip')) {
     showStatus('Please upload a ZIP file', 'error');
