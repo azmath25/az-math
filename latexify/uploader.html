@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaTeX Uploader - Az-Math</title>
+  <link rel="stylesheet" href="css/latexify.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📝 LaTeX Problem Uploader</h1>
+      <p>Upload Overleaf projects or paste LaTeX code</p>
+    </header>
+
+    <!-- Upload Methods -->
+    <div class="upload-methods">
+      
+      <!-- Method 1: Paste LaTeX -->
+      <div class="method-card active" id="method-paste">
+        <h2>📋 Paste LaTeX Code</h2>
+        <p class="hint">Quick test - paste your LaTeX problem below (no images)</p>
+        
+        <textarea id="latex-input" placeholder="Paste your LaTeX code here...
+
+Example:
+% metadata: difficulty=Medium, category=Algebra, tags=equations
+
+\section{Problem}
+Solve for $x$: $x^2 - 5x + 6 = 0$
+
+\section{Solution}
+Factoring: $(x-2)(x-3) = 0$
+Therefore $x = 2$ or $x = 3$.
+"></textarea>
+        
+        <div class="button-group">
+          <button class="btn btn-primary" onclick="parseLatexText()">
+            Parse & Preview
+          </button>
+          <button class="btn btn-secondary" onclick="clearInput()">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Method 2: Upload ZIP -->
+      <div class="method-card" id="method-zip">
+        <h2>📦 Upload Overleaf ZIP</h2>
+        <p class="hint">Upload entire project with images</p>
+        
+        <div class="upload-zone" id="upload-zone">
+          <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4m0 0v4m0-4h4m-4 0h-4m14-4l-8-8-8 8m14 4H4"/>
+          </svg>
+          <p>Drop ZIP file here or click to browse</p>
+          <small>Overleaf export (.zip, max 10MB)</small>
+        </div>
+        <input type="file" id="zip-input" accept=".zip" hidden>
+        
+        <div id="zip-status" class="status-message"></div>
+      </div>
+
+    </div>
+
+    <!-- Method Toggle -->
+    <div class="method-toggle">
+      <button onclick="switchMethod('paste')" id="toggle-paste" class="active">📋 Paste</button>
+      <button onclick="switchMethod('zip')" id="toggle-zip">📦 ZIP</button>
+    </div>
+
+    <!-- Preview Area -->
+    <div id="preview-area" style="display:none;">
+      <h2>👁️ Preview</h2>
+      
+      <!-- Metadata Preview -->
+      <div class="metadata-preview">
+        <div class="meta-item">
+          <strong>ID:</strong> 
+          <input type="number" id="problem-id" placeholder="Auto (next available)" min="1">
+        </div>
+        <div class="meta-item">
+          <strong>Title:</strong> 
+          <input type="text" id="problem-title" placeholder="Auto-detected or enter manually">
+        </div>
+        <div class="meta-item">
+          <strong>Category:</strong> 
+          <select id="problem-category">
+            <option value="">Auto-detect</option>
+            <option value="Algebra">Algebra</option>
+            <option value="Geometry">Geometry</option>
+            <option value="Number Theory">Number Theory</option>
+            <option value="Combinatorics">Combinatorics</option>
+          </select>
+        </div>
+        <div class="meta-item">
+          <strong>Difficulty:</strong> 
+          <select id="problem-difficulty">
+            <option value="Easy">Easy</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </div>
+        <div class="meta-item">
+          <strong>Tags:</strong> 
+          <input type="text" id="problem-tags" placeholder="comma, separated, tags">
+        </div>
+      </div>
+
+      <!-- Rendered Preview -->
+      <div class="rendered-preview" id="rendered-preview">
+        <div class="loading">Rendering...</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="button-group">
+        <button class="btn btn-success" onclick="saveProblem()">
+          💾 Save to Database
+        </button>
+        <button class="btn btn-secondary" onclick="resetUploader()">
+          🔄 Start Over
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div id="progress-bar" style="display:none;">
+      <div class="progress-fill" id="progress-fill"></div>
+      <span id="progress-text">Processing...</span>
+    </div>
+
+    <!-- Status Messages -->
+    <div id="status-message" class="status-message"></div>
+
+  </div>
+
+  <!-- MathJax -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+  <!-- JSZip for ZIP handling -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCYrw8aLDGtbKXdou7YweLVBKLFXHyl9SM",
+      authDomain: "az-math.firebaseapp.com",
+      projectId: "az-math",
+      storageBucket: "az-math.firebasestorage.app",
+      messagingSenderId: "49046309945",
+      appId: "1:49046309945:web:a3be9525705860c75191e8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    window.db = getFirestore(app);
+    window.storage = getStorage(app);
+  </script>
+
+  <!-- Main Scripts -->
+  <script type="module" src="js/latex-parser.js"></script>
+  <script type="module" src="js/latex-uploader.js"></script>
+
+  <script>
+    // Method Switcher
+    function switchMethod(method) {
+      document.querySelectorAll('.method-card').forEach(card => {
+        card.classList.remove('active');
+      });
+      document.querySelectorAll('.method-toggle button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      if (method === 'paste') {
+        document.getElementById('method-paste').classList.add('active');
+        document.getElementById('toggle-paste').classList.add('active');
+      } else {
+        document.getElementById('method-zip').classList.add('active');
+        document.getElementById('toggle-zip').classList.add('active');
+      }
+    }
+
+    // ZIP Upload Zone
+    const uploadZone = document.getElementById('upload-zone');
+    const zipInput = document.getElementById('zip-input');
+
+    uploadZone.addEventListener('click', () => zipInput.click());
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleZipUpload(files[0]);
+      }
+    });
+
+    zipInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleZipUpload(e.target.files[0]);
+      }
+    });
+
+    // Clear input
+    function clearInput() {
+      document.getElementById('latex-input').value = '';
+    }
+
+    // Reset uploader
+    function resetUploader() {
+      document.getElementById('preview-area').style.display = 'none';
+      document.getElementById('latex-input').value = '';
+      document.getElementById('zip-status').textContent = '';
+      document.getElementById('status-message').textContent = '';
+    }
+  </script>
+</body>
+</html>
