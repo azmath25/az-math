@@ -308,10 +308,7 @@ window.saveProblem = async function() {
     // Save to Firestore
     await setDoc(doc(window.db, 'problems', String(problemId)), problemData);
     
-    // Update meta/problems
-    await setDoc(doc(window.db, 'meta', 'problems'), {
-      latestId: problemId
-    }, { merge: true });
+    console.log('[Save] Successfully saved problem #' + problemId);
     
     showProgress('Complete!', 100);
     setTimeout(() => hideProgress(), 500);
@@ -337,13 +334,7 @@ window.saveProblem = async function() {
  */
 async function getNextProblemId() {
   try {
-    const metaDoc = await getDoc(doc(window.db, 'meta', 'problems'));
-    
-    if (metaDoc.exists() && metaDoc.data().latestId) {
-      return metaDoc.data().latestId + 1;
-    }
-    
-    // Fallback: find highest existing ID
+    // Find highest existing ID by querying problems
     const q = query(
       collection(window.db, 'problems'),
       orderBy('id', 'desc'),
@@ -353,14 +344,21 @@ async function getNextProblemId() {
     const snapshot = await getDocs(q);
     
     if (!snapshot.empty) {
-      return snapshot.docs[0].data().id + 1;
+      const highestId = snapshot.docs[0].data().id;
+      console.log('[ID] Found highest ID:', highestId);
+      return highestId + 1;
     }
     
-    return 1;  // Start from 1
+    // No problems exist yet
+    console.log('[ID] No problems found, starting from 1');
+    return 1;
     
   } catch (error) {
-    console.error('Error getting next ID:', error);
-    return Date.now() % 10000;  // Fallback to timestamp-based ID
+    console.error('[ID] Error getting next ID:', error);
+    // Fallback: generate unique ID from timestamp
+    const fallbackId = 1000 + (Date.now() % 9000);
+    console.log('[ID] Using fallback ID:', fallbackId);
+    return fallbackId;
   }
 }
 
