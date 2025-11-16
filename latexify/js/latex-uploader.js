@@ -1,4 +1,4 @@
-// latex-uploader.js - Handle uploads and save to Firebase
+// enhanced-latex-uploader.js - Upload handler with full LaTeX support
 
 import { 
   collection, 
@@ -34,9 +34,10 @@ window.parseLatexText = async function() {
   }
   
   try {
-    showProgress('Parsing LaTeX...', 30);
+    showProgress('Parsing LaTeX with full command support...', 30);
     
-    const parser = new window.LaTeXParser();
+    // Use enhanced parser
+    const parser = new window.EnhancedLaTeXParser();
     parsedData = parser.parse(latexInput);
     
     // Convert to Az-Math format
@@ -44,7 +45,7 @@ window.parseLatexText = async function() {
     azMathFormat.latex.source = latexInput;
     parsedData.azMathFormat = azMathFormat;
     
-    showProgress('Rendering preview...', 60);
+    showProgress('Rendering preview with MathJax...', 60);
     
     // Fill metadata inputs
     fillMetadataInputs(parsedData.metadata);
@@ -59,7 +60,7 @@ window.parseLatexText = async function() {
     document.getElementById('preview-area').style.display = 'block';
     document.getElementById('preview-area').scrollIntoView({ behavior: 'smooth' });
     
-    showStatus('✓ LaTeX parsed successfully! Review and save.', 'success');
+    showStatus('✓ LaTeX parsed successfully with full command support!', 'success');
     
   } catch (error) {
     console.error('Parse error:', error);
@@ -112,10 +113,10 @@ window.handleZipUpload = async function(file) {
     
     mainTex = await mainFile.zipEntry.async('text');
     
-    showProgress('Parsing LaTeX...', 50);
+    showProgress('Parsing LaTeX with full command support...', 50);
     
-    // Parse LaTeX
-    const parser = new window.LaTeXParser();
+    // Parse LaTeX with enhanced parser
+    const parser = new window.EnhancedLaTeXParser();
     parsedData = parser.parse(mainTex);
     
     // Extract images
@@ -160,7 +161,7 @@ window.handleZipUpload = async function(file) {
     document.getElementById('zip-status').textContent = 
       `✓ Extracted: ${texFiles.length} .tex file(s), ${imgCount} image(s)`;
     
-    showStatus('✓ ZIP processed! Review and save.', 'success');
+    showStatus('✓ ZIP processed with full LaTeX support!', 'success');
     
   } catch (error) {
     console.error('ZIP processing error:', error);
@@ -240,7 +241,7 @@ async function renderPreview(azMathFormat) {
   
   previewDiv.innerHTML = html;
   
-  // Typeset math
+  // Typeset math with MathJax
   if (window.MathJax && window.MathJax.typesetPromise) {
     await window.MathJax.typesetPromise([previewDiv]);
   }
@@ -313,7 +314,7 @@ window.saveProblem = async function() {
     showProgress('Complete!', 100);
     setTimeout(() => hideProgress(), 500);
     
-    showStatus(`✓ Problem #${problemId} saved successfully!`, 'success');
+    showStatus(`✓ Problem #${problemId} saved successfully with full LaTeX support!`, 'success');
     
     // Show link to view
     setTimeout(() => {
@@ -334,7 +335,6 @@ window.saveProblem = async function() {
  */
 async function getNextProblemId() {
   try {
-    // Find highest existing ID by querying problems
     const q = query(
       collection(window.db, 'problems'),
       orderBy('id', 'desc'),
@@ -349,13 +349,11 @@ async function getNextProblemId() {
       return highestId + 1;
     }
     
-    // No problems exist yet
     console.log('[ID] No problems found, starting from 1');
     return 1;
     
   } catch (error) {
     console.error('[ID] Error getting next ID:', error);
-    // Fallback: generate unique ID from timestamp
     const fallbackId = 1000 + (Date.now() % 9000);
     console.log('[ID] Using fallback ID:', fallbackId);
     return fallbackId;
