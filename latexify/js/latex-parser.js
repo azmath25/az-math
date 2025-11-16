@@ -512,4 +512,4 @@ export class LaTeXParser {
 }
 
 // Export for use in other modules
-window.LaTeXParser = EnhancedLaTeXParser;
+window.LaTeXParser = LaTeXParser;
