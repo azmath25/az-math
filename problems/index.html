@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AZ-MATH - Problems</title>
+
+  <link rel="stylesheet" href="variables.css">
+  <link rel="stylesheet" href="problems.css">
+  <link rel="stylesheet" href="problem_card.css">
+
+  <style>
+    /* A little extra baseline styling for the body */
+    body {
+      margin: 0;
+      background-color: #f4f4f9;
+      font-family: var(--font-family);
+    }
+    
+    /* Mock Header for the top "Menu - Logo" area */
+    .site-header {
+      background: var(--primary);
+      color: var(--primary-text);
+      padding: 20px;
+      text-align: center;
+      font-size: 2rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      border-bottom: var(--border-width) solid var(--secondary);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    AZ-MATH LOGO & MENU
+  </header>
+
+  <div class="problems-layout" id="main-layout">
+    
+    <aside class="sidebar left-sidebar" id="sidebar-left">
+      <div class="sidebar-content">
+        <h3>Filters</h3>
+        <p><label><input type="checkbox"> Algebra</label></p>
+        <p><label><input type="checkbox"> Geometry</label></p>
+        <p><label><input type="checkbox"> Number Theory</label></p>
+        <p><label><input type="checkbox"> Combinatorics</label></p>
+      </div>
+    </aside>
+
+    <main class="problems-center">
+      
+      <div class="problems-topbar">
+        <button class="btn-retro" id="toggle-left-btn" title="Toggle Filters">☰ Left</button>
+        
+        <div class="search-box">
+          <input type="text" placeholder="Search problems...">
+          <button class="btn-retro">Q</button>
+        </div>
+        
+        <div class="pagination-controls">
+          <button class="btn-retro">&lt;</button>
+          <button class="btn-retro">&gt;</button>
+        </div>
+
+        <button class="btn-retro" id="toggle-right-btn" title="Toggle News">Right ☰</button>
+      </div>
+
+      <div class="problems-list">
+        
+        <div class="problem-card">
+          <div class="problem-card-header">
+            <div class="p-header-id">#1042</div>
+            <div class="p-header-source">IMO 2023, Q1</div>
+            <div class="p-header-author">Submitted by: MathGuru</div>
+            <button class="p-header-btn">⚠ Report</button>
+          </div>
+          
+          <div class="problem-card-metadata">
+            <div class="p-meta-item p-meta-tag">Number Theory</div>
+            <div class="p-meta-item p-meta-hardness medium">Medium</div>
+            <div class="p-meta-item">♥ 142</div>
+            <div class="p-meta-item">★ 89</div>
+          </div>
+
+          <div class="problem-card-body">
+            <div class="problem-card-left-feature">
+              <div class="p-left-color-strip"></div>
+            </div>
+            <div class="p-body-content">
+              <p>Determine all composite integers <i>n</i> > 1 that satisfy the following property: if <i>d<sub>1</sub>, d<sub>2</sub>, ..., d<sub>k</sub></i> are all the positive divisors of <i>n</i> with 1 = <i>d<sub>1</sub></i> < <i>d<sub>2</sub></i> < ... < <i>d<sub>k</sub></i> = <i>n</i>, then <i>d<sub>i</sub></i> divides <i>d<sub>i+1</sub></i> + <i>d<sub>i+2</sub></i> for every 1 ≤ <i>i</i> ≤ <i>k</i> - 2.</p>
+              <p><i>(Imagine this text is very long to test the scrolling feature inside the card limits...)</i></p>
+            </div>
+          </div>
+
+          <div class="problem-card-footer">
+            <button class="p-footer-btn">🌐 Lang</button>
+            <button class="p-footer-btn">🔗 Share</button>
+            <button class="p-footer-btn">♥ Like</button>
+            <button class="p-footer-btn">★ Star</button>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-card-header">
+            <div class="p-header-id">#0891</div>
+            <div class="p-header-source">Local Olympiad</div>
+            <div class="p-header-author">Submitted by: Admin</div>
+            <button class="p-header-btn">⚠ Report</button>
+          </div>
+          
+          <div class="problem-card-metadata">
+            <div class="p-meta-item p-meta-tag">Geometry</div>
+            <div class="p-meta-item p-meta-hardness hard">Hard</div>
+            <div class="p-meta-item">♥ 56</div>
+            <div class="p-meta-item">★ 21</div>
+          </div>
+
+          <div class="problem-card-body">
+            <div class="problem-card-left-feature">
+              <div class="p-left-color-strip" style="background: var(--primary);"></div>
+            </div>
+            <div class="p-body-content">
+              <p>Let ABC be an acute-angled triangle with circumcircle Ω. Let P be a point on Ω, and let lines passing through P and parallel to AB and AC intersect BC at points X and Y, respectively. Prove that the circumcircle of triangle PXY is tangent to Ω.</p>
+            </div>
+          </div>
+
+          <div class="problem-card-footer">
+            <button class="p-footer-btn">🌐 Lang</button>
+            <button class="p-footer-btn">🔗 Share</button>
+            <button class="p-footer-btn">♥ Like</button>
+            <button class="p-footer-btn">★ Star</button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <aside class="sidebar right-sidebar" id="sidebar-right">
+      <div class="sidebar-content">
+        <h2 class="vertical-text">N E W S</h2>
+        <div style="margin-top: 20px; text-align: center;">
+          <p>Site updated to v2.0!</p>
+          <hr style="border: none; border-top: 1px solid var(--secondary)">
+          <p>Upcoming contest next week.</p>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script>
+    function updateLayoutColumns() {
+      const layout = document.getElementById('main-layout');
+      const sidebars = document.querySelectorAll('.sidebar');
+      
+      // Count how many sidebars are open (do NOT have 'collapsed' class)
+      let openCount = 0;
+      sidebars.forEach(sidebar => {
+        // If it's desktop, and it doesn't have 'collapsed', it's open.
+        if (!sidebar.classList.contains('collapsed')) {
+          openCount++;
+        }
+      });
+
+      // Remove old state classes
+      layout.classList.remove('sidebars-0', 'sidebars-1', 'sidebars-2');
+      
+      // Apply the new state class
+      layout.classList.add(`sidebars-${openCount}`);
+    }
+
+    // Toggle Left Sidebar
+    document.getElementById('toggle-left-btn').addEventListener('click', () => {
+      document.getElementById('sidebar-left').classList.toggle('collapsed');
+      updateLayoutColumns();
+    });
+
+    // Toggle Right Sidebar
+    document.getElementById('toggle-right-btn').addEventListener('click', () => {
+      document.getElementById('sidebar-right').classList.toggle('collapsed');
+      updateLayoutColumns();
+    });
+
+    // Run once on load to set the initial column state
+    updateLayoutColumns();
+  </script>
+
+</body>
+</html>
