@@ -1,1 +1,203 @@
+/* ===== RETRO-STYLE COMPACT PROBLEM CARDS - AZ-MATH ===== */
 
+.problem-card {
+  /* Internal variables calculated purely from your JSON's base-unit */
+  --card-p-unit: calc(var(--base-unit) * 1); 
+  --card-g-unit: calc(var(--base-unit) * 0.6); 
+
+  display: flex;
+  flex-direction: column;
+  border: var(--border-width) solid var(--secondary);
+  background: var(--background);
+  font-family: var(--font-family);
+  width: 100%; 
+  margin-bottom: calc(var(--card-p-unit) * 2);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  /* Retro sharp shadow */
+  box-shadow: 3px 3px 0 var(--secondary); 
+}
+
+.problem-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--secondary);
+}
+
+/* Header (Top Row) */
+.problem-card-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  border-bottom: var(--border-width) solid var(--secondary);
+  padding: calc(var(--card-g-unit) * 0.5) var(--card-p-unit);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.p-header-id {
+  color: var(--primary-text);
+  background: var(--primary);
+  font-weight: 700;
+  padding: calc(var(--card-g-unit) * 0.4) var(--card-g-unit);
+  line-height: 1;
+}
+
+.p-header-source,
+.p-header-author {
+  padding-left: var(--card-p-unit);
+  font-weight: 500;
+}
+
+.p-header-author {
+  font-style: italic;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.p-header-actions {
+  display: flex;
+  gap: var(--card-g-unit);
+}
+
+.p-header-btn {
+  background: none;
+  border: var(--border-width) solid var(--secondary);
+  color: var(--primary);
+  font-weight: 600;
+  padding: calc(var(--card-g-unit) * 0.4) calc(var(--card-g-unit) * 0.8);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.p-header-btn:hover {
+  background: var(--meta-bg);
+}
+
+/* Main Body */
+.problem-card-body {
+  position: relative;
+  border-bottom: var(--border-width) solid var(--secondary);
+  padding: var(--card-p-unit);
+  padding-left: calc(var(--card-p-unit) * 2.5); 
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.p-body-content p {
+  margin-bottom: var(--card-g-unit);
+}
+
+/* Left feature (Just + Strip) */
+.problem-card-left-feature {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--card-p-unit) * 1.8);
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--card-g-unit);
+  pointer-events: none; 
+}
+
+.p-left-color-strip {
+  background: var(--left-strip-color);
+  width: 100%;
+  height: 100%;
+  border-right: var(--border-width) solid var(--secondary);
+}
+
+/* Inner Metadata Row */
+.problem-card-metadata {
+  background: var(--meta-bg);
+  color: var(--meta-text);
+  border-bottom: var(--border-width) solid var(--secondary);
+  font-size: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  text-align: center;
+  padding: calc(var(--card-g-unit) * 0.5) var(--card-p-unit);
+  font-weight: 600;
+}
+
+.p-meta-item {
+  border-right: var(--border-width) solid var(--secondary);
+  padding: calc(var(--card-g-unit) * 0.25) var(--card-g-unit);
+}
+
+.p-meta-item:last-child {
+  border-right: none;
+}
+
+.p-meta-tag::before {
+  content: '#';
+  opacity: 0.7;
+}
+
+/* Hardness Colors from JSON */
+.p-meta-hardness.easy { color: var(--hardness-easy); }
+.p-meta-hardness.medium { color: var(--hardness-medium); }
+.p-meta-hardness.hard { color: var(--hardness-hard); }
+
+/* Footer */
+.problem-card-footer {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  text-align: center;
+  background: var(--background);
+}
+
+.p-footer-btn {
+  background: none;
+  border: var(--border-width) solid var(--secondary);
+  border-top: none; 
+  border-left: none; 
+  color: var(--primary);
+  font-weight: 600;
+  padding: calc(var(--card-p-unit) * 0.8) calc(var(--card-p-unit) * 0.5);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.p-footer-btn:first-child {
+  border-left: none;
+}
+
+.p-footer-btn:last-child {
+  border-right: none;
+}
+
+.p-footer-btn:hover {
+  background: var(--meta-bg);
+}
+
+/* ===== TABLET / DESKTOP OPTIMIZATIONS ===== */
+@media (min-width: 640px) {
+  .problem-card {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .problem-card-header {
+    grid-template-columns: auto 1fr auto auto;
+    gap: var(--card-p-unit);
+  }
+  .p-header-id {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .p-header-source,
+  .p-header-author,
+  .problem-card-metadata,
+  .p-header-btn {
+    font-size: 0.8rem;
+  }
+  .p-meta-item {
+    padding: calc(var(--card-g-unit) * 0.15) calc(var(--card-g-unit) * 0.4);
+  }
+}
