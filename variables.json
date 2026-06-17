@@ -1,17 +1,17 @@
+/* ===== RETRO-STYLE COMPACT PROBLEM CARDS - AZ-MATH ===== */
 {
-  "design": {
-    "base-unit": "10px",
-    "font-family": "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
-    "border-width": "1px"
-  },
-  "colors": {
-    "primary": "#0066cc", 
-    "primary-text": "#ffffff", 
-    "secondary": "#e0e0e0", 
-    "background": "#ffffff", 
-    "text": "#1a1a1a", 
-    "meta-bg": "#e3f2fd", 
-    "meta-text": "#1565c0", 
-    "left-strip-color": "#ffcc00" 
-  }
+  "base-unit": "10px",
+  "border-width": "2px",
+  "font-family": "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  "primary": "#0066cc", 
+  "primary-text": "#ffffff", 
+  "secondary": "#1a1a1a", 
+  "background": "#ffffff", 
+  "text": "#1a1a1a", 
+  "meta-bg": "#e3f2fd", 
+  "meta-text": "#1565c0", 
+  "left-strip-color": "#ffcc00",
+  "hardness-easy": "#1b5e20",
+  "hardness-medium": "#e65100",
+  "hardness-hard": "#b71c1c"
 }
