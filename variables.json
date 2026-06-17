@@ -1,1 +1,17 @@
-
+{
+  "design": {
+    "base-unit": "10px",
+    "font-family": "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
+    "border-width": "1px"
+  },
+  "colors": {
+    "primary": "#0066cc", 
+    "primary-text": "#ffffff", 
+    "secondary": "#e0e0e0", 
+    "background": "#ffffff", 
+    "text": "#1a1a1a", 
+    "meta-bg": "#e3f2fd", 
+    "meta-text": "#1565c0", 
+    "left-strip-color": "#ffcc00" 
+  }
+}
