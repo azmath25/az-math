@@ -1,0 +1,25 @@
+/* problem-card */
+
+:root {
+  /* Design Units */
+  --base-unit: 10px;
+  --border-width: 2px;
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+  /* Main Palette */
+  --primary: #0066cc; 
+  --primary-text: #ffffff; 
+  --secondary: #1a1a1a; 
+  --background: #ffffff; 
+  --text: #1a1a1a; 
+
+  /* Problem Card Specific Colors */
+  --meta-bg: #e3f2fd; 
+  --meta-text: #1565c0; 
+  --left-strip-color: #ffcc00;
+
+  /* Hardness Levels */
+  --hardness-easy: #1b5e20;
+  --hardness-medium: #e65100;
+  --hardness-hard: #b71c1c;
+}
